@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
+VList = input('Volumes: ')
+EList = input('Energies: ')
+
 '''Example of fitting the Birch-Murnaghan EOS to data'''
 
 from pylab import * #this includes numpy as np!
 from scipy.optimize import leastsq
 
 # raw data from 2.2.3-al-analyze-eos.py
-v = np.array([48.630000000000003, 47.630000000000003, 46.659999999999997, 45.689999999999998, 44.740000000000002])
-e = np.array([-14.90544092, -14.90701488, -14.890497939999999, -14.854192319999999, -14.79628458])
+v = np.array(VList)
+e = np.array(EList)
 
 #make a vector to evaluate fits on with a lot of points so it looks smooth
 vfit = np.linspace(min(v),max(v),100)
