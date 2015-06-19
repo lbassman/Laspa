@@ -61,12 +61,11 @@ def genSubScript(cname,aList,runLength,NCORES):
     f.write(string)
     f.close()
 
-def getLat(aList,runLength,NCORES):
+def getLat(cname, aList,runLength,NCORES):
     """
     generates a subdirectory for each vasp run, each with the necessary files
     moves subdirectories to $WORK/Jonas directory and runs submission scripts
     """
-    cname = 'GS'
     for a in aList:
         cell = Cell().loadFromPOSCAR('POSCAR')
         cell.setA0(float(a))
@@ -94,9 +93,10 @@ while not valid:
 a_min = float(raw_input("Minimum lattice parameter in angstroms: "))
 a_max = float(raw_input("Maximum lattice parameter in angstroms: "))
 n_points = int(raw_input("Number of points: "))
+cname = raw_input('Job name: ')
 
 # make list of lattice parameters
 aList = np.linspace(a_min, a_max, n_points)
 print aList
 # run simulations
-getLat(aList,runTime,NCORES)
+getLat(cname,aList,runTime,NCORES)
