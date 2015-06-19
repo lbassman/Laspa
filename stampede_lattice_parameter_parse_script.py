@@ -54,10 +54,10 @@ def parseResults(directory):
                     aList += [sizeData[1]]
         dirInfo = dir.split('_')
         # eN = dirInfo[0] # main strain amount
-        if len(dirInfo) == 2:
-            tList += [0.0] # additional strain amount
-        else:
-            tList += [float(dirInfo[2])]          
+        #if len(dirInfo) == 2:
+        #    tList += [0.0] # additional strain amount
+        #else:
+        #    tList += [float(dirInfo[2])]          
     return [EList,VList,aList,tList] 
 
 
