@@ -149,6 +149,9 @@ class Cell:
         else:
             print "Incorrect lattice vectors!"
 
+    def setElements(self,elements):
+        self.elements = elements
+
     def setSiteMobilities(self,xFree,yFree,zFree):
         """ set the mobility of each site """
         for i in range(self.numberOfElements()):
@@ -256,10 +259,10 @@ class Cell:
             self.SelectiveDynamics = False
         # check for cartesian or direct
         if self.SelectiveDynamics:
-            self.CorD = lines[8]
+            self.CorD = lines[8].strip()
             pointer = 9
         else:
-            self.CorD = lines[7]
+            self.CorD = lines[7].strip()
             pointer = 8
         # add all the atom sites
         newSites = []
@@ -297,7 +300,7 @@ class Cell:
         string += (' %d'*len(self.elementCounts))%tuple(self.elementCounts) + '\n'
         if self.SelectiveDynamics:
             string += 'Selective Dynamics\n'
-        string += self.CorD
+        string += self.CorD+'\n'
         # add atom sites
         for element in self.sites:
             for k in element:
