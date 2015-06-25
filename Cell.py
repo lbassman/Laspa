@@ -297,7 +297,7 @@ class Cell:
         string += (' %d'*len(self.elementCounts))%tuple(self.elementCounts) + '\n'
         if self.SelectiveDynamics:
             string += 'Selective Dynamics\n'
-        string += self.CorD+'\n'
+        string += self.CorD
         # add atom sites
         for element in self.sites:
             for k in element:
