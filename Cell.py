@@ -88,7 +88,7 @@ class Cell:
         self.latticeVectors = []
         self.sites = [[Site()]]
         self.elements = []
-        self.elementCounts = [0]
+        self.elementCounts = [1]
         self.a0 = 1.0
         self.header = ''
         self.SelectiveDynamics = False
