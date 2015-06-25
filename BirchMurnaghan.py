@@ -4,6 +4,9 @@ VList = input('Volumes: ')
 EList = input('Energies: ')
 
 '''Example of fitting the Birch-Murnaghan EOS to data'''
+# Code from http://gilgamesh.cheme.cmu.edu/doc/software/jacapo/appendices/appendix-eos.html
+# Edited by Jonas Kaufman jlkaufman@hmc.edu
+# 25 June, 2015
 
 from pylab import * #this includes numpy as np!
 from scipy.optimize import leastsq
@@ -57,34 +60,48 @@ def Murnaghan(parameters,vol):
 
     return E
 
+def Birch(parameters,vol):
+    '''
+    given a vector of parameters and volumes, return a vector of energies.
+    equation From Wikipedia
+    '''
+    E0 = parameters[0]
+    B0 = parameters[1]
+    BP = parameters[2]
+    V0 = parameters[3]
+    term12 = ((V0/vol)**(2.0/3.0) - 1.0)
+    term3 = (6.0 - 4.0*(V0/vol)**(2.0/3.0))
+    E = E0 + (9.0*V0*B0/16.0)*((term12**3.0)*BP + (term12**2.0)*term3)
+    return E
+
 # and we define an objective function that will be minimized
 def objective(pars,y,x):
     #we will minimize this function
-    err =  y - Murnaghan(pars,x)
+    err =  y - Birch(pars,x)
     return err
 
-x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Murnaghan function
+x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Birch function
 
-murnpars, ier = leastsq(objective, x0, args=(e,v)) #this is from scipy
+birchpars, ier = leastsq(objective, x0, args=(e,v)) #this is from scipy
 
 #now we make a figure summarizing the results
 plot(v,e,'ro')
 plot(vfit, a*vfit**2 + b*vfit + c,'--',label='parabolic fit')
-plot(vfit, Murnaghan(murnpars,vfit), label='Murnaghan fit')
+plot(vfit, Birch(birchpars,vfit), label='Birch fit')
 xlabel('Volume ($\AA^3$)')
 ylabel('Energy (eV)')
 legend(loc='best')
 
 #add some text to the figure in figure coordinates
 ax = gca()
-text(0.4,0.5,'Min volume = %1.2f $\AA^3$' % murnpars[3],
+text(0.4,0.5,'Min volume = %1.2f $\AA^3$' % birchpars[3],
      transform = ax.transAxes)
-text(0.4,0.4,'Bulk modulus = %1.2f eV/$\AA^3$ = %1.2f GPa' % (murnpars[1],
-                                                              murnpars[1]*160.21773)
+text(0.4,0.4,'Bulk modulus = %1.2f eV/$\AA^3$ = %1.2f GPa' % (birchpars[1],
+                                                              birchpars[1]*160.21773)
      , transform = ax.transAxes)
 savefig('a-eos.png')
 show()
 
 
 print 'initial guesses  : ',x0
-print 'fitted parameters: ', murnpars
+print 'fitted parameters: ', birchpars
