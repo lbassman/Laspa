@@ -3,7 +3,7 @@
 # Jonas Kaufman jlkaufman@hmc.edu
 # April 17, 2015
 # Main script to run all calculations necessary to for finding
-# the ideal yield strength of a cubic crystal structure - on Stampede
+# the ideal tensile strength of a cubic crystal structure - on Stampede
 # Building on work done by Josh Sanz
 
 ### TODO: clean up variable names

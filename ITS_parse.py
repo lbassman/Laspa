@@ -3,7 +3,7 @@
 # Jonas Kaufman jlkaufman@hmc.edu
 # June 10, 2015
 # Helper script to parse VASP output files for data necessary for
-# finding the ideal yield strength of a cubic crystal structure - on Stampede
+# finding the ideal tensile strength of a cubic crystal structure - on Stampede
 # Building on work done by Josh Sanz
 
 import os

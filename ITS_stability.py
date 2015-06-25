@@ -3,7 +3,7 @@
 # Jonas Kaufman jlkaufman@hmc.edu
 # June 10, 2015
 # Helper script to apply additional strains to test for stability and
-# run VASP calculations in order to find the ideal yield strength
+# run VASP calculations in order to find the ideal tensile strength
 # of a cubic crystal structure - on Stampede
 # Building on work done by Josh Sanz
 
