@@ -94,11 +94,15 @@ legend(loc='best')
 
 #add some text to the figure in figure coordinates
 ax = gca()
-text(0.4,0.5,'Min volume = %1.2f $\AA^3$' % birchpars[3],
+text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % birchpars[3],
      transform = ax.transAxes)
-text(0.4,0.4,'Bulk modulus = %1.2f eV/$\AA^3$ = %1.2f GPa' % (birchpars[1],
+text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % (birchpars[3]**(1.0/3.0)),
+     transform = ax.transAxes)
+text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' % (birchpars[1],
                                                               birchpars[1]*160.21773)
      , transform = ax.transAxes)
+
+
 savefig('a-eos.png')
 show()
 
