@@ -11,54 +11,57 @@ import fnmatch
 HOME = '/home1/03022/bassman/Jonas/'
 WORK = '/work/03022/bassman/Jonas/'
 
-def getEnergy(file):
-    """ parses an OUTCAR file and pulls out the free energy of the system """
+def getEnergy(file): # this function returns E(sigma->0), not TOTEN
+    """ parses an OUTCAR file and pulls out the energy of the system """
     f = open(file,'r')
     while True:
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)' in f.readline():
-            f.readline()    # line of dashes
-            energyLine = f.readline().split()
-            energy = float(energyLine[4])
+        nextLine = f.readline()
+        if not nextLine:
             break
+        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)' in nextLine:
+            f.readline()    # line of dashes
+            f.readline()    # TOTEN line
+            f.readline()    # blank line
+            energyLine = f.readline().split()
+            energy = float(energyLine[6])
     return energy
     
 def getCellSize(file):
     """ returns the volume of a cell parsed from OUTCAR """
     f = open(file,'r')
     while True:
-        if 'VOLUME and BASIS-vectors are now :' in f.readline():
+        nextLine = f.readline()
+        if not nextLine:
+            break
+        if 'VOLUME and BASIS-vectors are now :' in nextLine:
             f.readline()    # dashed line
             f.readline()    # cutoff energy
             volumeLine = f.readline().split()
             V = float(volumeLine[4])
             for i in range(6):
                 f.readline()    # text
-            a = float(f.readline().split()[1]) # perpendicular lattice vectors
-            # the lattice vector length in loading direction is [0]
-            break
-    return (V,a)
-    ## check that this is really reading the perpendicular size
+            aLine = f.readline().split()
+            ax = aLine[0]
+            ay = aLine[1]
+            az = aLine[2]
+            aList = [ax,ay,az]
+    return (V,aList)
 
 def parseResults(directory):
     """ finds the energy of each simulation in a given results directory """
+    dirList = []
     EList = []
     VList = []
-    aList = []
-    tList = []
-    for dir in os.listdir(directory): # 0.XXXXX_main or 0.XXXXX_c*_0.XXXXX for example
+    aLists = []
+    for dir in os.listdir(directory):
         for file in os.listdir(directory + dir):        
                 if fnmatch.fnmatch(file,'OUTCAR'):
                     EList += [getEnergy(directory+dir+'/'+file)]
                     sizeData = getCellSize(directory+dir+'/'+file)
                     VList += [sizeData[0]]
-                    aList += [sizeData[1]]
-        dirInfo = dir.split('_')
-        # eN = dirInfo[0] # main strain amount
-        #if len(dirInfo) == 2:
-        #    tList += [0.0] # additional strain amount
-        #else:
-        #    tList += [float(dirInfo[2])]          
-    return [EList,VList,aList,tList] 
+                    aLists += [sizeData[1]]
+                    dirList += [dir]     
+    return [dirList,EList,VList,aLists] 
 
 
 #===========================================================================
@@ -67,10 +70,7 @@ def parseResults(directory):
 RESULTS = HOME # where all the results folders are located
 cname = raw_input('Job name: ')
 data = parseResults(RESULTS+cname+'_results/')
-EList = data[0]
-VList = data[1]
+EList = data[1]
+VList = data[2]
 print '\nVolumes:\n'+str(VList)
 print '\nEnergies:\n'+str(EList)
-print 
-
-   
