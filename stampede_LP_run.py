@@ -74,7 +74,7 @@ def getLat(jName, aList,runLength,NCORES):
         sp.call(['mkdir','%s_%.5f'%(jName,a)])
         sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
                 ['%s_%.5f'%(jName,a)])
-        sp.call('cp -r %s_%.5f'%(jName,a)+WORK,shell=True)
+        sp.call('cp -r %s_%.5f '%(jName,a)+WORK,shell=True)
         sp.call('chmod u+x %s_submit'%jName,shell=True)
     # run submission script
     sp.call(['sbatch','%s_submit'%jName])    

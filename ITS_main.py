@@ -104,13 +104,13 @@ def runITS(jName,aList,runLength,NCORES):
         genSubScript(jName,aList,runLength,NCORES)
         # apply perpendicular strains
         cell = Cell().loadFromPOSCAR('POSCAR')
-        strainCell(cell, [a,-a,0,0,0,0])
+        strainCell(cell, [0,a,a,0,0,0])
         cell.sendToPOSCAR()
         # copy files to subdirectory, move subdirectory to WORK
         sp.call(['mkdir','%s_%.5f'%(jName,a)])
         sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
                 ['%s_%.5f'%(jName,a)])
-        sp.call('cp -r %s_%.5f'%(jName,a)+WORK,shell=True)
+        sp.call('cp -r %s_%.5f '%(jName,a)+WORK,shell=True)
         sp.call('chmod u+x %s_submit'%jName,shell=True)
     # run submission script
     sp.call(['sbatch','%s_submit'%jName])
@@ -130,16 +130,14 @@ while not valid:
         print "Run time must be a whole number"
 
 NLAT = 7 # number of perpendicular strains to run
-eList = np.arange(0.0,emac,inc)
-
+eList = np.arange(inc,emax+inc,inc)
 for eN in eList:
-   
-    maxLat = eN # maximum perpendicular strain
+    maxLat = eN/2.0 # maximum perpendicular strain
     aList = np.linspace(0.0, -maxLat,NLAT)
     # apply strain
-    cell = Cell().loadFromPOSCAR() # starts from provided POSCAR
+    cell = Cell().loadFromPOSCAR('CONTCAR.E0') # starts from provided POSCAR
     strainCell(cell,[eN,0,0,0,0,0])
     cell.sendToPOSCAR()    
-    jName = 'ITS'+str(eN)
+    jName = 'ITS_%.3f'%eN
     # run VASP job
     runITS(jName,aList,runLength,NCORES)
