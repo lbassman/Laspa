@@ -78,7 +78,7 @@ def strainCell(cell, Epsilon):
                                        (e5*x)/2+(e4*y)/2+(1+e3)*z])
     return cell
 
-def genSubScript(cname,tList,runLength,NCORES):
+def genSubScript(jName,tList,runLength,NCORES):
     """
     create a submission script for Stampede's SLURM queueing system
     this version sends an email whenever one of the queued jobs starts and ends
@@ -87,8 +87,8 @@ def genSubScript(cname,tList,runLength,NCORES):
     hrs = runLength/60
     mins = runLength%60
     string = ('#!/bin/bash\n' +
-    '#SBATCH -J ' + cname +  '\n' +             # specify job name
-    '#SBATCH -o ' + cname + '%j\n' +            # write output to this file
+    '#SBATCH -J ' + jName +  '\n' +             # specify job name
+    '#SBATCH -o ' + jName + '%j\n' +            # write output to this file
     '#SBATCH -n %d\n'%(NCORES*len(tList)) +     # request 64 cores
     '#SBATCH -p normal\n' +                     # send to normal queue
     '#SBATCH -t %.2d:%d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
@@ -99,18 +99,18 @@ def genSubScript(cname,tList,runLength,NCORES):
     'module load vasp\n')                       # load vasp module
     for i in range(len(tList)):
         # change to working directory, run vasp
-        string += 'cd '+WORK+cname+'_%.5f\n'%tList[i]
+        string += 'cd '+WORK+jName+'_%.5f\n'%tList[i]
         string += 'ibrun -o %d -n %d vasp_std > vasp_output.out &\n'%(NCORES*i,NCORES)
     # wait for all vasp runs to finish, move all files to home directory
-    string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(cname)
+    string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(jName)
     for i in range(len(tList)):
         # move directories to results directory
-        string += 'cd '+WORK+'\nmv '+cname+'_%.5f '%tList[i]+HOME+'%s_results/\n'%cname
-    f = open(cname + '_submit','w')
+        string += 'cd '+WORK+'\nmv '+jName+'_%.5f '%tList[i]+HOME+'%s_results/\n'%jName
+    f = open(jName + '_submit','w')
     f.write(string)
     f.close()
 
-def getCxx(cname,eN,tList,runType,runLength,NCORES):
+def getCxx(jName,eN,tList,runType,runLength,NCORES):
     """
     generates a subdirectory for each vasp run, each with the necessary files
     moves subdirectories to $WORK directory and runs submission scripts ???
@@ -128,26 +128,26 @@ def getCxx(cname,eN,tList,runType,runLength,NCORES):
         else:
             sp.call('cp INCAR.static INCAR'.split())
         # create submission script, place copy in appropriate subdirectory
-        genSubScript(cname,tList,runLength,NCORES)
-        # sp.call(('cp submission_script '+cname+"_%.5f/"%t).split())
+        genSubScript(jName,tList,runLength,NCORES)
+        # sp.call(('cp submission_script '+jName+"_%.5f/"%t).split())
         cell = Cell().loadFromPOSCAR('POSCAR')
         # strain tensors from Cerny 2004
-        if 'cprime' in cname:
+        if 'cprime' in jName:
             strainCell(cell, [t,-t,0,0,0,0])
-        elif 'c44' in cname:
+        elif 'c44' in jName:
             strainCell(cell, [0,0,0,t,0,0])
-        else: # 'c66' in cname
+        else: # 'c66' in jName
             strainCell(cell, [0,0,0,0,0,t])
         cell.setSiteMobilities(True,True,True) # allow all directions to relax
         cell.sendToPOSCAR()
         # copy files to subdirectory, move subdirectory to $WORK
-        sp.call(['mkdir',cname+'_%.5f'%t])
-        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[cname+'_submit']+\
-                [cname+'_%.5f/'%t])
-        sp.call('cp -r '+cname+'_%.5f '%t + WORK,shell=True)
-        sp.call('chmod u+x %s_submit'%cname,shell=True)
+        sp.call(['mkdir',jName+'_%.5f'%t])
+        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
+                [jName+'_%.5f/'%t])
+        sp.call('cp -r '+jName+'_%.5f '%t + WORK,shell=True)
+        sp.call('chmod u+x %s_submit'%jName,shell=True)
     # run submission script
-    sp.call(['sbatch','%s_submit'%cname])
+    sp.call(['sbatch','%s_submit'%jName])
 
 #===========================================================================
 # MAIN PROGRAM

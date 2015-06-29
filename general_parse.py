@@ -68,8 +68,8 @@ def parseResults(directory):
 # MAIN PROGRAM
 #===========================================================================
 RESULTS = HOME # where all the results folders are located
-cname = raw_input('Job name: ')
-data = parseResults(RESULTS+cname+'_results/')
+jName = raw_input('Job name: ')
+data = parseResults(RESULTS+jName+'_results/')
 dirList = data[0]
 EList = data[1]
 VList = data[2]

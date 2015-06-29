@@ -14,22 +14,6 @@ import numpy as np
 HOME = '/home1/03022/bassman/Jonas/'
 WORK = '/work/03022/bassman/Jonas/'
 
-def readState():
-    # open state file and get information
-    #decimals, not percents
-    state = open('STATE','r+')
-    line1 = state.readline()
-    if line1 == '':
-        eN = 0.0
-        inc = INC
-        emax = EMAX
-    else:
-        eN = float(line1.split()[1])
-        inc = float(state.readline().split()[1])
-        emax = float(state.readline().split()[1])
-    state.close()
-    return [eN, inc, emax]
-
 def getEnergy(file): # this function returns E(sigma->0), not TOTEN
     """ parses an OUTCAR file and pulls out the energy of the system """
     f = open(file,'r')
@@ -98,17 +82,7 @@ def parseResults(directory):
 #===========================================================================
 # MAIN PROGRAM
 #===========================================================================
-# read in state file to get strain steps
-state = readState()
-inc = state[1]
-emax = state[2]
-eList = []
-eN = 0.0
-while abs(eN) < (abs(emax)+inc/2.0): # fix this?
-    eList += [eN]
-    eN += inc
-print eList
-
+"""
 RESULTS = HOME # where all the results folders are located
 for eN in eList:
     # get data from main strain steps
@@ -129,3 +103,5 @@ for eN in eList:
     print parseResults(RESULTS+'%.5f_c66_results/'%eN)
 
 #strains += [(a-a0)/a0] ?
+
+"""

@@ -26,51 +26,18 @@ import subprocess as sp
 from Cell import *
 import os
 import sys
-
-#SCRIPT = 'IYS_main.py'
+import numpy as np
 
 # number of cores for each calculation
-NCORES = 16 ## should this be 32?
-runLength = 5 ## to be set by user later on
-
+NCORES = 16 
+runLength = 100 ## to be set by user later on
 # home and work directories
 HOME = '/home1/03022/bassman/Jonas/'
 WORK = '/work/03022/bassman/Jonas/'
-
-# email address for Slurm notifications
-EMAIL = 'jlkaufman@hmc.edu'
-
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
-
-# default increment and max strain, decimal
-INC = 0.01
-EMAX = 0.02
-
-def readState():
-    # open state file and get information
-    #decimals, not percents
-    state = open('STATE','r+')
-    line1 = state.readline()
-    if line1 == '':
-        eN = 0.0
-        inc = INC
-        emax = EMAX
-    else:
-        eN = float(line1.split()[1])
-        inc = float(state.readline().split()[1])
-        emax = float(state.readline().split()[1])
-    state.close()
-    return [eN, inc, emax]
-
-def writeState(eN, inc, emax, message=''):
-    # update state file and close
-    #decimals, not percents
-    state = open('STATE','w')
-    string = 'eN '+str(eN)+'\ninc '+str(inc)+'\nemax '+str(emax)+message
-    state.write(string)
-    state.close()
-    return
+# email address for Slurm notifications
+EMAIL = 'jlkaufman@hmc.edu'
 
 def strainCell(cell, Epsilon):
     """
@@ -95,71 +62,65 @@ def strainCell(cell, Epsilon):
                                        (e5*x)/2+(e4*y)/2+(1+e3)*z])
     return cell
 
-def genSubScript(cname,tList,runLength,NCORES):
+def genSubScript(jName,aList,runLength,NCORES):
     """
     create a submission script for Stampede's SLURM queueing system
-    this version sends an email whenever one of the queued jobs starts and ends
+    this version sends an email whenever one of the queued jobs starts
     """
     # uses integer division
     hrs = runLength/60
     mins = runLength%60
     string = ('#!/bin/bash\n' +
-    #'#SBATCH -v\n' +                            # verbose 
-    '#SBATCH -J ' + cname +  '\n' +             # specify job name
-    '#SBATCH -o ' + cname + '%j\n' +            # write output to this file
-    '#SBATCH -n %d\n'%(NCORES*len(tList)) +     # request cores
+    '#SBATCH -J ' + jName +  '\n' +             # specify job name
+    '#SBATCH -o ' + jName + '%j\n' +            # write output to this file
+    '#SBATCH -n %d\n'%(NCORES*len(aList)) +     # request cores
     '#SBATCH -p normal\n' +                     # send to normal queue
     '#SBATCH -t %.2d:%d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
     '#SBATCH --mail-user=' + EMAIL +'\n' +      # set email
-    #'#SBATCH --mail-type=begin\n' +             # send email when job starts
-    #'#SBATCH --mail-type=end\n' +               # send email when job ends
-    '#SBATCH --mail-type=all\n' +               
+    '#SBATCH --mail-type=all\n' +               # send all emails
     '#SBATCH -A ' + ALLOCATION + '\n' +         # specifies project
     'module load vasp\n')                       # load vasp module
-    for i in range(len(tList)):
+    for i in range(len(aList)):
         # change to work directory, run vasp
-        string += 'cd '+WORK+'%.5f_%s\n'%(tList[i],cname)
+        string += 'cd '+WORK+'%s_%.5f\n'%(jName,aList[i])
         string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(NCORES*i,NCORES)
-    string += 'wait\ncd '+HOME+'\nmkdir %.5f_%s_results\n'%(tList[i],cname)
-    for i in range(len(tList)):
+    string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(jName)
+    for i in range(len(aList)):
         # move directories to results directory
-        string += 'cd '+WORK+'\nmv %.5f_%s '%(tList[i],cname)
-        string += HOME+'%.5f_%s_results\n'%(tList[i],cname)
-    f = open(cname + '_submit','w')
+        string += 'cd '+WORK+'\nmv %s_%.5f '%(jName,aList[i])
+        string += HOME+'%s_results/\n'%jName
+    f = open(jName + '_submit','w')
     f.write(string)
     f.close()
 
-def relaxCell(jobName, eN,runLength,NCORES):
+def runITS(jName,aList,runLength,NCORES):
     """
     generate subdirectory, copies files, and submits job to
     relax a strained cell
     """
-    tList = [eN]
-    cname = jobName
-    genSubScript(cname,tList,runLength,NCORES)
     # copy files to subdirectory, move subdirectory to WORK
-    for t in tList:
+    for a in aList:
         # create submission script
-        genSubScript(cname,tList,runLength,NCORES)
+        genSubScript(jName,aList,runLength,NCORES)
+        # apply perpendicular strains
+        cell = Cell().loadFromPOSCAR('POSCAR')
+        strainCell(cell, [a,-a,0,0,0,0])
+        cell.sendToPOSCAR()
         # copy files to subdirectory, move subdirectory to WORK
-        sp.call(['mkdir','%.5f_%s'%(t,cname)])
-        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[cname+'_submit']+\
-                ['%.5f_%s'%(t,cname)])
-        sp.call('cp -r %.5f_%s '%(t,cname)+WORK,shell=True)
-        sp.call('chmod u+x %s_submit'%cname,shell=True)
-    sp.call(['sbatch','%s_submit'%cname])
+        sp.call(['mkdir','%s_%.5f'%(jName,a)])
+        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
+                ['%s_%.5f'%(jName,a)])
+        sp.call('cp -r %s_%.5f'%(jName,a)+WORK,shell=True)
+        sp.call('chmod u+x %s_submit'%jName,shell=True)
+    # run submission script
+    sp.call(['sbatch','%s_submit'%jName])
 
 #===========================================================================
 # MAIN PROGRAM
 #===========================================================================
-# user input, to be added later
-"""
-if no STATE FILE, ask for user input, otherwise get information from previous run
-
 NCORES = float(raw_input('Number of cores per simulation: '))
 emax = float(raw_input('Maximum strain (%): '))/100.0     # e.g. 15%
 inc = float(raw_input('Strain step size (%): '))/100.0    # e.g. 1%
-numSteps = int(emax/inc)
 valid = 0
 while not valid:
     try:
@@ -168,39 +129,17 @@ while not valid:
     except:
         print "Run time must be a whole number"
 
-# start with relaxed cell
-sp.call('cp CONTCAR.E0 POSCAR'.split())
-sp.call('cp CONTCAR.E0 CONTCAR'.split())
-"""
-#######################################################################
-cname = 'main'
-# read in last state
-state = readState()
-eN = state[0]
-inc = state[1]
-emax = state[2]
-aN = eN + 1
-if abs(eN) < (abs(emax)+inc/2.0):
-    print '\nRunning next strain step.\n'
-    # strain cell by increment relative to starting position
-    # a(n+1) = f(n)*a(n), f(n) = 1 + inc*a(0)/a(n)
-    a0 = aN
-    f = 1+inc/a0
-    if eN == 0.0:
-        CONTCAR = 'CONTCAR.E0'
-    else:
-        CONTCAR = HOME+'%.5f_%s_results/'%(eN,cname)+'%.5f_%s/CONTCAR'%(eN,cname)
-    cell = Cell().loadFromPOSCAR(CONTCAR) # use previous CONTCAR as POSCAR
-    strainCell(cell,[f-1,0,0,0,0,0])
-    cell.setSiteMobilities(False,True,True)
-    cell.sendToPOSCAR()     
-    aN = a0*f
-    eN = aN -1 # this is the next strain step
-    
-    # write out final state
-    writeState(eN, inc, emax)
-    # run VASP relaxation
-    relaxCell(cname,eN,runLength,NCORES)
-else:
-    writeState(eN,inc,emax,'\nReached maximum strain.\n')
-    sys.exit('\nReached maximum strain.\n')
+NLAT = 7 # number of perpendicular strains to run
+eList = np.arange(0.0,emac,inc)
+
+for eN in eList:
+   
+    maxLat = eN # maximum perpendicular strain
+    aList = np.linspace(0.0, -maxLat,NLAT)
+    # apply strain
+    cell = Cell().loadFromPOSCAR() # starts from provided POSCAR
+    strainCell(cell,[eN,0,0,0,0,0])
+    cell.sendToPOSCAR()    
+    jName = 'ITS'+str(eN)
+    # run VASP job
+    runITS(jName,aList,runLength,NCORES)
