@@ -30,32 +30,41 @@ def readState():
     state.close()
     return [eN, inc, emax]
 
-def getEnergy(file):
-    """ parses an OUTCAR file and pulls out the free energy of the system """
+def getEnergy(file): # this function returns E(sigma->0), not TOTEN
+    """ parses an OUTCAR file and pulls out the energy of the system """
     f = open(file,'r')
     while True:
-        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)' in f.readline():
-            f.readline()    # line of dashes
-            energyLine = f.readline().split()
-            energy = float(energyLine[4])
+        nextLine = f.readline()
+        if not nextLine:
             break
+        if 'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)' in nextLine:
+            f.readline()    # line of dashes
+            f.readline()    # TOTEN line
+            f.readline()    # blank line
+            energyLine = f.readline().split()
+            energy = float(energyLine[6])
     return energy
     
 def getCellSize(file):
     """ returns the volume of a cell parsed from OUTCAR """
     f = open(file,'r')
     while True:
-        if 'VOLUME and BASIS-vectors are now :' in f.readline():
+        nextLine = f.readline()
+        if not nextLine:
+            break
+        if 'VOLUME and BASIS-vectors are now :' in nextLine:
             f.readline()    # dashed line
             f.readline()    # cutoff energy
             volumeLine = f.readline().split()
             V = float(volumeLine[4])
             for i in range(6):
                 f.readline()    # text
-            a = float(f.readline().split()[1]) # perpendicular lattice vectors
-            # the lattice vector length in loading direction is [0]
-            break
-    return (V,a)
+            aLine = f.readline().split()
+            ax = aLine[0]
+            ay = aLine[1]
+            az = aLine[2]
+            aList = [ax,ay,az]
+    return (V,aList)
     ## check that this is really reading the perpendicular size
     
 def getInitialConditions():

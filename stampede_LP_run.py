@@ -50,12 +50,12 @@ def genSubScript(cname,aList,runLength,NCORES):
     'module load vasp\n')                       # load vasp module
     for i in range(len(aList)):
         # change to work directory, run vasp
-        string += 'cd '+WORK+'%.5f_%s\n'%(aList[i],cname)
+        string += 'cd '+WORK+'%s_%.5f\n'%(cname,aList[i])
         string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(NCORES*i,NCORES)
     string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(cname)
     for i in range(len(aList)):
         # move directories to results directory
-        string += 'cd '+WORK+'\nmv %.5f_%s '%(aList[i],cname)
+        string += 'cd '+WORK+'\nmv %s_%.5f '%(cname,aList[i])
         string += HOME+'%s_results/\n'%cname
     f = open(cname + '_submit','w')
     f.write(string)
@@ -73,10 +73,10 @@ def getLat(cname, aList,runLength,NCORES):
         # create submission script
         genSubScript(cname,aList,runLength,NCORES)
         # copy files to subdirectory, move subdirectory to WORK
-        sp.call(['mkdir','%.5f_%s'%(a,cname)])
+        sp.call(['mkdir','%s_%.5f'%(cname,a)])
         sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[cname+'_submit']+\
-                ['%.5f_%s'%(a,cname)])
-        sp.call('cp -r %.5f_%s '%(a,cname)+WORK,shell=True)
+                ['%s_%.5f'%(cname,a)])
+        sp.call('cp -r %s_%.5f'%(cname,a)+WORK,shell=True)
         sp.call('chmod u+x %s_submit'%cname,shell=True)
     # run submission script
     sp.call(['sbatch','%s_submit'%cname])    
