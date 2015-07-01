@@ -67,7 +67,11 @@ def parseResults(directory):
 #===========================================================================
 # MAIN PROGRAM
 #===========================================================================
-RESULTS = HOME # where all the results folders are located
+direct = raw_input('HOME or WORK: ') # where all the results folders are located
+if 'h' in direct or 'H' in direct:
+    RESULTS = HOME
+else:
+    RESULTS = WORK
 jName = raw_input('Job name: ')
 data = parseResults(RESULTS+jName+'_results/')
 dirList = data[0]
@@ -77,4 +81,9 @@ aLists = data[3]
 print '\nDirectory names:\n'+str(dirList)
 print '\nVolumes:\n'+str(VList)
 print '\nLattice parameters:\n'+str(aLists)
+perps = []
+for a in aLists:
+    perps += [a[1]]
+print '\nPerpendicular parameters:\n'+str(perps)
 print '\nEnergies:\n'+str(EList)
+

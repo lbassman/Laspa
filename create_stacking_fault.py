@@ -7,9 +7,9 @@ import math
 import numpy as np
 
 # number of cores for each calculation
-NCORES = 32
+NCORES = 16
 #run length in minutes
-RUNLENGTH = 120
+RUNLENGTH = 300
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
 # home and work directories
@@ -35,7 +35,6 @@ def makeISF(nshifts,nlayers,ngap):
     halfz = .5*(nlayers-1)/(nlayers+ngap) # z position right between the surface layers
     toptwo = 1.5/(nlayers+ngap)
     bottomtwo = (nlayers-2.5)/(nlayers+ngap)
-    num = 0
     displacements = np.linspace(0.0, 1.0, nshifts+1)
     for disp in displacements:    
         cell = Cell().loadFromPOSCAR()
@@ -48,17 +47,15 @@ def makeISF(nshifts,nlayers,ngap):
                             cell.sites[i][j].move([x, y - disp*(1.0/6.0), z])
                         if z < toptwo or z > bottomtwo:
                             cell.sites[i][j].zfree = False
-        cell.sendToPOSCAR('POSCAR_%02d'%num)
-        num += 1
+        cell.sendToPOSCAR('POSCAR_%.5f'%disp)
 
 def makeESF(nshifts,nlayers,ngap):
     toptwo = 1.5/(nlayers+ngap)
     bottomtwo = (nlayers-2.5)/(nlayers+ngap)
     halfz = .5*(nlayers-3)/(nlayers+ngap) # z position below the ISF
-    num = nshifts+1
-    displacements = np.linspace(0.0, 1.0, num)
+    displacements = np.linspace(0.0, 1.0, nshifts+1)
     for disp in displacements[1:]:    
-        cell = Cell().loadFromPOSCAR('POSCAR_%02d'%(nshifts))
+        cell = Cell().loadFromPOSCAR('POSCAR_%.5f'%(1.0))
         cell.setSiteMobilities(False,False,True)
         for element in cell.sites:
             for i in range(cell.numberOfElements()):
@@ -68,10 +65,10 @@ def makeESF(nshifts,nlayers,ngap):
                             cell.sites[i][j].move([x, y + disp*(1.0/6.0), z])
                         if z < toptwo or z > bottomtwo:
                             cell.sites[i][j].zfree = False
-        cell.sendToPOSCAR('POSCAR_%02d'%num)
-        num += 1
+        num = disp + 1.0
+        cell.sendToPOSCAR('POSCAR_%.5f'%num)
 
-def genSubScript(cname,aList,runLength,NCORES):
+def genSubScript(jName,aList,runLength,NCORES):
     """
     create a submission script for Stampede's SLURM queueing system
     this version sends an email whenever one of the queued jobs starts
@@ -81,61 +78,61 @@ def genSubScript(cname,aList,runLength,NCORES):
     hrs = runLength/60
     mins = runLength%60
     string = ('#!/bin/bash\n' +
-    '#SBATCH -J ' + cname +  '\n' +             # specify job name
-    '#SBATCH -o ' + cname + '%j\n' +            # write output to this file
+    '#SBATCH -J ' + jName +  '\n' +             # specify job name
+    '#SBATCH -o ' + jName + '%j\n' +            # write output to this file
     '#SBATCH -n %d\n'%(NCORES*len(aList)) +     # request 64 cores
     '#SBATCH -p normal\n' +                     # send to normal queue
-    '#SBATCH -t %.2d:%d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
+    '#SBATCH -t %02d:%02d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
     '#SBATCH --mail-user=' + EMAIL +'\n' +      # set email
     '#SBATCH --mail-type=all\n' +               # send all emails
     '#SBATCH -A ' + ALLOCATION + '\n' +         # specifies project
     'module load vasp\n')                       # load vasp module
     for i in range(len(aList)):
         # change to work directory, run vasp
-        string += 'cd '+WORK+'%2d_%s\n'%(aList[i],cname)
+        string += 'cd '+WORK+'%s_%.5f\n'%(jName,aList[i])
         string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(NCORES*i,NCORES)
-    string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(cname)
+    string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(jName)
     for i in range(len(aList)):
         # move directories to results directory
-        string += 'cd '+WORK+'\nmv %2d_%s '%(aList[i],cname)
-        string += HOME+'%s_results/\n'%cname
-    f = open(cname + '_submit','w')
+        string += 'cd '+WORK+'\nmv %s_%.5f '%(jName,aList[i])
+        string += HOME+'%s_results/\n'%jName
+    f = open(jName + '_submit','w')
     f.write(string)
     f.close()  
 
-def runJobs(cname, aList,runLength,NCORES):
+def runJobs(jName, aList,runLength,NCORES):
     """
     generates a subdirectory for each vasp run, each with the necessary files
     moves subdirectories to $WORK/Jonas directory and runs submission scripts
     """
     for a in aList:
         # create submission script
-        genSubScript(cname,aList,runLength,NCORES)
+        genSubScript(jName,aList,runLength,NCORES)
         # copy files to subdirectory, move subdirectory to WORK
-        sp.call(('cp POSCAR_%02d POSCAR'%a).split())
-        sp.call(['mkdir','%02d_%s'%(a,cname)])
-        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[cname+'_submit']+\
-                ['%02d_%s'%(a,cname)])
-        sp.call('cp -r %02d_%s '%(a,cname)+WORK,shell=True)
-        sp.call('chmod u+x %s_submit'%cname,shell=True)
+        sp.call(('cp POSCAR_%.5f POSCAR'%a).split())
+        sp.call(['mkdir','%s_%.5f'%(jName,a)])
+        sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
+                ['%s_%.5f'%(jName,a)])
+        sp.call('cp -r %s_%.5f '%(jName,a)+WORK,shell=True)
+        sp.call('chmod u+x %s_submit'%jName,shell=True)
     # run submission script
-    sp.call(['sbatch','%s_submit'%cname])  
+    sp.call(['sbatch','%s_submit'%jName])  
 #===========================================================================
 # MAIN PROGRAM
 #===========================================================================
 """
-element = 'Cu'
-a = 3.63548
-nshifts = 5
-jobName = 'Cu_GSF'
-"""
-ngap = 3
-
 element = raw_input('Element: ')
 a = float(raw_input('Lattice parameter: '))
 # ngap = int(raw_input('Vacuum gap size (number of atoms): '))
 nshifts = int(raw_input('Number of points: '))
 jobName = raw_input('Job name: ')
+"""
+
+element = 'Cu'
+a = 3.63548
+ngap = 3
+nshifts = 5
+jobName = 'Cu_full'
 
 sequence = 'ABCABCABCABC'
 layers = list(sequence)
@@ -168,5 +165,6 @@ cell.sendToPOSCAR()
 makeISF(nshifts,nlayers,ngap) # add ISF
 makeESF(nshifts,nlayers,ngap) # add ESF
 
-aList = range(2*nshifts+1)
-runJobs(jobName,aList,RUNLENGTH,NCORES) # run jobs
+aList = np.linspace(0.0, 2.0, 2*nshifts+1)
+print aList
+#runJobs(jobName,aList,RUNLENGTH,NCORES) # run jobs

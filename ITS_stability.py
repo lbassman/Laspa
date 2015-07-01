@@ -26,18 +26,15 @@ from Cell import *
 import os
 
 # number of cores for each calculation
-NCORES = 16
-runLength = 5 ## to be set by user later on
-
+NCORES = 16 
+runLength = 100 ## to be set by user later on
 # home and work directories
 HOME = '/home1/03022/bassman/Jonas/'
 WORK = '/work/03022/bassman/Jonas/'
-
-# email address for Slurm notifications
-EMAIL = 'jlkaufman@hmc.edu'
-
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
+# email address for Slurm notifications
+EMAIL = 'jlkaufman@hmc.edu'
 
 def readState():
     # open state file and get information

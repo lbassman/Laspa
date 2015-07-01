@@ -29,7 +29,7 @@ EMAIL = 'jlkaufman@hmc.edu'
 ALLOCATION = 'TG-DMR140093'
 
 def genSubScript(jName,aList,runLength,NCORES):
-     """
+    """
     create a submission script for Stampede's SLURM queueing system
     this version sends an email whenever one of the queued jobs starts
     """
@@ -39,9 +39,9 @@ def genSubScript(jName,aList,runLength,NCORES):
     string = ('#!/bin/bash\n' +
     '#SBATCH -J ' + jName +  '\n' +             # specify job name
     '#SBATCH -o ' + jName + '%j\n' +            # write output to this file
-    '#SBATCH -n %d\n'%(NCORES*len(tList)) +     # request cores
+    '#SBATCH -n %d\n'%(NCORES*len(aList)) +     # request cores
     '#SBATCH -p normal\n' +                     # send to normal queue
-    '#SBATCH -t %.2d:%d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
+    '#SBATCH -t %02d:%02d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
     '#SBATCH --mail-user=' + EMAIL +'\n' +      # set email
     '#SBATCH --mail-type=all\n' +               # send all emails
     '#SBATCH -A ' + ALLOCATION + '\n' +         # specifies project

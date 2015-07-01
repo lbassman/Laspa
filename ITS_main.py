@@ -75,7 +75,7 @@ def genSubScript(jName,aList,runLength,NCORES):
     '#SBATCH -o ' + jName + '%j\n' +            # write output to this file
     '#SBATCH -n %d\n'%(NCORES*len(aList)) +     # request cores
     '#SBATCH -p normal\n' +                     # send to normal queue
-    '#SBATCH -t %.2d:%d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
+    '#SBATCH -t %02d:%02d:00\n'%(hrs,mins) +      # set maximum wall (clock) time
     '#SBATCH --mail-user=' + EMAIL +'\n' +      # set email
     '#SBATCH --mail-type=all\n' +               # send all emails
     '#SBATCH -A ' + ALLOCATION + '\n' +         # specifies project
@@ -103,7 +103,7 @@ def runITS(jName,aList,runLength,NCORES):
         # create submission script
         genSubScript(jName,aList,runLength,NCORES)
         # apply perpendicular strains
-        cell = Cell().loadFromPOSCAR('POSCAR')
+        cell = Cell().loadFromPOSCAR('POSCAR.EN')
         strainCell(cell, [0,a,a,0,0,0])
         cell.sendToPOSCAR()
         # copy files to subdirectory, move subdirectory to WORK
@@ -121,6 +121,8 @@ def runITS(jName,aList,runLength,NCORES):
 NCORES = float(raw_input('Number of cores per simulation: '))
 emax = float(raw_input('Maximum strain (%): '))/100.0     # e.g. 15%
 inc = float(raw_input('Strain step size (%): '))/100.0    # e.g. 1%
+NLAT = int(raw_input('Number of perpendicular lattice vector strains to run: '))
+job = raw_input('Job name: ')
 valid = 0
 while not valid:
     try:
@@ -128,16 +130,14 @@ while not valid:
         valid = 1
     except:
         print "Run time must be a whole number"
-
-NLAT = 7 # number of perpendicular strains to run
 eList = np.arange(inc,emax+inc,inc)
 for eN in eList:
-    maxLat = eN/2.0 # maximum perpendicular strain
-    aList = np.linspace(0.0, -maxLat,NLAT)
+    aList = np.linspace(0.0, -eN, NLAT)
     # apply strain
     cell = Cell().loadFromPOSCAR('CONTCAR.E0') # starts from provided POSCAR
     strainCell(cell,[eN,0,0,0,0,0])
-    cell.sendToPOSCAR()    
-    jName = 'ITS_%.3f'%eN
+    cell.sendToPOSCAR('POSCAR.EN')    
+    jName = job+'_%.3f'%eN
     # run VASP job
+    print 'Running %.3f strain'%eN
     runITS(jName,aList,runLength,NCORES)
