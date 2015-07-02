@@ -100,7 +100,7 @@ class Cell:
             for x in j:
                 string += str(x) + ' '
             string += '\n'
-        string += ' '.join(map(str,self.elements)) + '\n'
+        string += ''.join(self.elements) + '\n'
         string += ' '.join(map(str,self.elementCounts)) + '\n'
         if self.SelectiveDynamics:
             string += 'Selective Dynamics\n'
@@ -249,7 +249,7 @@ class Cell:
         self.a0 = float(lines[1])
         self.header = lines[0].strip()
         # check which elements there are
-        self.elements = map(str,lines[5].split())
+        self.elements = lines[5].split()
         # check how many atoms there are of each element
         self.elementCounts = map(int,lines[6].split())
         # check for selective dynamics

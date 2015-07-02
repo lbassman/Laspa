@@ -6,32 +6,39 @@ from Cell import *
 import math
 import numpy as np
 
-# number of cores for each calculation
-NCORES = 16
-#run length in minutes
-RUNLENGTH = 300
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
 # home and work directories
-HOME = '/home1/03022/bassman/Jonas/'
-#WORK = '/work/03022/bassman/Jonas/'
-WORK = '/work/03022/bassman/Jonas/'
+HOME = '/home1/03324/tg826232/'
+WORK = '/work/03324/tg826232/'
 # email address for Slurm notifications
 EMAIL = 'jlkaufman@hmc.edu'
 
 # functions to add layers
-def addA(cell,z):
-    cell.addSite(0,Site([0,0,z]))
-    cell.addSite(0,Site([0.5,0.5,z]))
-def addB(cell,z):
-    cell.addSite(0,Site([0,(2.0/6.0),z]))
-    cell.addSite(0,Site([0.5,(5.0/6.0),z]))
-def addC(cell,z):
-    cell.addSite(0,Site([0,(4.0/6.0),z]))
-    cell.addSite(0,Site([0.5,(1.0/6.0),z]))
+def addA(cell,ny,z):
+    y = 0.0
+    while y < .99: # .99 instead of 1.0 to account for floating point error
+        cell.addSite(0,Site([0.0,y,z]))
+        y += 1.0/(2*ny)
+        cell.addSite(0,Site([0.5,y,z]))
+        y += 1.0/(2*ny)
+def addB(cell,ny,z):
+    y = 2.0/(6.0*ny)
+    while y < .99:
+        cell.addSite(0,Site([0.0,y,z]))
+        y += 1.0/(2*ny)
+        cell.addSite(0,Site([0.5,y,z]))
+        y += 1.0/(2*ny)
+def addC(cell,ny,z):
+    y = 1.0/(6.0*ny)
+    while y < .99:
+        cell.addSite(0,Site([0.5,y,z]))
+        y += 1.0/(2*ny)
+        cell.addSite(0,Site([0.0,y,z]))
+        y += 1.0/(2*ny)
 
 # add ESF and ISF functions
-def makeISF(nshifts,nlayers,ngap):
+def makeISF(nshifts,nlayers,ny,ngap):
     halfz = .5*(nlayers-1)/(nlayers+ngap) # z position right between the surface layers
     toptwo = 1.5/(nlayers+ngap)
     bottomtwo = (nlayers-2.5)/(nlayers+ngap)
@@ -44,29 +51,29 @@ def makeISF(nshifts,nlayers,ngap):
                 for j in range(cell.numberOfAtomsOfElement(i)):
                         x,y,z = cell.sites[i][j].position
                         if z > halfz:
-                            cell.sites[i][j].move([x, y - disp*(1.0/6.0), z])
+                            cell.sites[i][j].move([x-disp*0.5, y - disp*(1.0/6.0)/ny, z])
                         if z < toptwo or z > bottomtwo:
                             cell.sites[i][j].zfree = False
-        cell.sendToPOSCAR('POSCAR_%.5f'%disp)
+        cell.sendToPOSCAR(('POSCAR_%.5f'%disp).replace('.',''))
 
-def makeESF(nshifts,nlayers,ngap):
+def makeESF(nshifts,nlayers,ny,ngap):
     toptwo = 1.5/(nlayers+ngap)
     bottomtwo = (nlayers-2.5)/(nlayers+ngap)
     halfz = .5*(nlayers-3)/(nlayers+ngap) # z position below the ISF
     displacements = np.linspace(0.0, 1.0, nshifts+1)
     for disp in displacements[1:]:    
-        cell = Cell().loadFromPOSCAR('POSCAR_%.5f'%(1.0))
+        cell = Cell().loadFromPOSCAR(('POSCAR_%.5f'%(1.0)).replace('.',''))
         cell.setSiteMobilities(False,False,True)
         for element in cell.sites:
             for i in range(cell.numberOfElements()):
                 for j in range(cell.numberOfAtomsOfElement(i)):
                         x,y,z = cell.sites[i][j].position
                         if z < halfz:
-                            cell.sites[i][j].move([x, y + disp*(1.0/6.0), z])
+                            cell.sites[i][j].move([x+disp*0.5, y+disp*(1.0/6.0)/ny, z])
                         if z < toptwo or z > bottomtwo:
                             cell.sites[i][j].zfree = False
         num = disp + 1.0
-        cell.sendToPOSCAR('POSCAR_%.5f'%num)
+        cell.sendToPOSCAR(('POSCAR_%.5f'%num).replace('.',''))
 
 def genSubScript(jName,aList,runLength,NCORES):
     """
@@ -109,7 +116,7 @@ def runJobs(jName, aList,runLength,NCORES):
         # create submission script
         genSubScript(jName,aList,runLength,NCORES)
         # copy files to subdirectory, move subdirectory to WORK
-        sp.call(('cp POSCAR_%.5f POSCAR'%a).split())
+        sp.call((('cp POSCAR_%.5f POSCAR'%a).replace('.','')).split())
         sp.call(['mkdir','%s_%.5f'%(jName,a)])
         sp.call('cp POSCAR INCAR KPOINTS POTCAR'.split()+[jName+'_submit']+\
                 ['%s_%.5f'%(jName,a)])
@@ -120,19 +127,50 @@ def runJobs(jName, aList,runLength,NCORES):
 #===========================================================================
 # MAIN PROGRAM
 #===========================================================================
-"""
-element = raw_input('Element: ')
-a = float(raw_input('Lattice parameter: '))
-# ngap = int(raw_input('Vacuum gap size (number of atoms): '))
-nshifts = int(raw_input('Number of points: '))
+# USER INPUTS
+# which pure element is in system
+elements = raw_input('Element: ')
+if not elements: elements = ['Cu']
+else: elements = [elements]
+print ''.join(elements)
+# lattice constant
+a = raw_input('Lattice constant (angstroms): ')
+if not a: a= 3.6355
+else: a = float(a)
+print a
+# width of vaccuum gap
+ngap = raw_input('Vacuum gap width (number of atoms): ')
+if not ngap: ngap = 4
+else: ngap = int(ngap)
+print ngap
+# periodicity in x
+###########################
+# periodicity in y
+ny = raw_input('Periodicity in y: ')
+if not ny: ny = 1
+else: ny = int(ny)
+print ny
+# number of shifts per SF
+nshifts = raw_input('Number shifts per stacking fault: ')
+if not nshifts: nshifts = 10
+else: nshifts = int(nshifts)
+print nshifts
+# pathway (ISF or full)
+###########################
+# run time
+runLength = raw_input('Maximum run time (minutes): ')
+if not runLength: runLength = 300
+else: runLength = int(runLength)
+print runLength
+# job name
 jobName = raw_input('Job name: ')
-"""
-
-element = 'Cu'
-a = 3.63548
-ngap = 3
-nshifts = 5
-jobName = 'Cu_full'
+if not jobName: jobName = 'GSF'
+print jobName
+# number of cores
+NCORES = raw_input('Number of cores per simulation: ')
+if not NCORES: NCORES = 16
+else: NCORES = int(NCORES)
+print NCORES
 
 sequence = 'ABCABCABCABC'
 layers = list(sequence)
@@ -140,31 +178,30 @@ nlayers = len(layers)
 ax = math.sqrt(2)/2
 ay = math.sqrt(6)/2
 az = math.sqrt(3)/3
-bx,by,bz = ax,ay,az*(nlayers+ngap)
+bx,by,bz = ax,ny*ay,az*(nlayers+ngap)
 
 # make perfect crystal to start from
 cell = Cell() # Cartesian coordinates by default
-cell.setHeader(element+' fcc')
-cell.setElements([element]) # fix this?
+cell.setHeader(jobName)
+cell.setElements(elements)
 cell.setA0(a)
-cell.setCoordinateSystem('Direct')
+cell.setCoordinateSystem('Direct') # change to direct
 cell.setLatticeVectors([[bx,0,0],[0,by,0],[0,0,bz]])
 zpoint = 0.0
 while layers:
     next = layers.pop(0)
     if next == 'A':
-        addA(cell,zpoint)
+        addA(cell,ny,zpoint)
     elif next == 'B':
-        addB(cell,zpoint)
+        addB(cell,ny,zpoint)
     else: # next == 'C'
-        addC(cell,zpoint)
+        addC(cell,ny,zpoint)
     zpoint += (1.0/(nlayers+ngap))
 cell.setSiteMobilities(False,False,True)
 cell.sendToPOSCAR()
 
-makeISF(nshifts,nlayers,ngap) # add ISF
-makeESF(nshifts,nlayers,ngap) # add ESF
+makeISF(nshifts,nlayers,ny,ngap) # add ISF
+makeESF(nshifts,nlayers,ny,ngap) # add ESF
 
 aList = np.linspace(0.0, 2.0, 2*nshifts+1)
-print aList
-#runJobs(jobName,aList,RUNLENGTH,NCORES) # run jobs
+runJobs(jobName,aList,runLength,NCORES) # run jobs
