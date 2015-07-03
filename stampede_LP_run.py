@@ -19,8 +19,8 @@ import numpy as np
 NCORES = 16
 
 # home and work directories
-HOME = '/home1/03022/bassman/Jonas/'
-WORK = '/work/03022/bassman/Jonas/'
+HOME = '/home1/03324/tg826232/'
+WORK = '/work/03324/tg826232/'
 
 # email address for Slurm notifications
 EMAIL = 'jlkaufman@hmc.edu'

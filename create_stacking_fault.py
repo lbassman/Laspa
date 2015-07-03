@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Jonas Kaufman jlkaufman@gmail.com
 # June 22 2014
 
