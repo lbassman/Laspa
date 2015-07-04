@@ -1,31 +1,36 @@
 #!/usr/bin/env python
 
-# Jonas Kaufman jlkaufman@hmc.edu
-# June 29, 2015
-# Script to parse VASP output directories located in
-# parent directory: jobName_results
-
+#==============================================================================
+#  Jonas Kaufman jlkaufman@hmc.edu
+#  June 29, 2015
+#  Script to parse VASP output directories located in
+#  parent directory jobName_results and summarize output, perform fitting
+#  Outputs data for each ionic step of each job and a summary of the final data 
+#  for all jobs, writes data to a file jobName_data.log
+#  Contains an optional Birch-Murnaghan fitting function to fit energy/volume 
+#  data and output a graph to jobName_birch.png
+#==============================================================================
+# READ THIS:
 # Run 'module load python' before using on Stampede
-# Make script executable using 'chmod +x _____.py'
+# Make script executable using 'chmod +x _____.py' to call as bash script
 
 import matplotlib
 matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
 import matplotlib.pyplot as plt
-from pylab import * #this includes numpy as np!
+from pylab import * # this includes numpy as np
 from scipy.optimize import leastsq
 import os
 import fnmatch
-
-
-# home and work directories (add $SCRATCH?)
+import sys
+# home and work directories (SET THESE TO YOUR OWN)
 HOME = '/home1/03324/tg826232/'
 WORK = '/work/03324/tg826232/'
 
-#===========================================================================
-# Parsing Functions
-#===========================================================================
+#==============================================================================
+#  Parsing Functions
+#==============================================================================
 def getTime(file):
-    """ parses an OUTCAR file for the run time """
+    """ parses an OUTCAR file and pulls out the run time """
     f = open(file,'r')
     while True:
         nextLine = f.readline()
@@ -34,7 +39,7 @@ def getTime(file):
             break
     return time
 
-def getEnergies(file): # this function returns E(sigma->0), not TOTEN
+def getEnergies(file):  # this function returns E(sigma->0), not TOTEN
     """ parses an OUTCAR file and pulls out the energy of the system
     after each ionic step """
     energies = []
@@ -52,7 +57,7 @@ def getEnergies(file): # this function returns E(sigma->0), not TOTEN
     return energies
     
 def getPressures(file):
-    """ parses an OUTCAR file and pulls out the pressure of the system
+    """ parses an OUTCAR file and pulls out the pressure and Pullay stress 
     after each ionic step """
     f = open(file,'r')
     pressures = []
@@ -62,16 +67,17 @@ def getPressures(file):
         if not nextLine:
             break
         if 'external pressure' in nextLine:
-            PLine = nextLine.split()
-            pressures += [float(PLine[3])]
-            stresses += [float(PLine[8])]
+            pressureLine = nextLine.split()
+            pressures += [float(pressureLine[3])]
+            stresses += [float(pressureLine[8])]
     return (pressures,stresses)
 
 def getSizes(file):
-    """ returns the volume and lattice parameters after each ionic step """
+    """ parses an OUTCAR file and pulls out the volume and lattice
+    parameters after each ionic step """
     f = open(file,'r')
     volumes = []
-    lats = []
+    vectors = []
     while True:
         nextLine = f.readline()
         if not nextLine:
@@ -87,19 +93,19 @@ def getSizes(file):
             ax = float(aLine[0])
             ay = float(aLine[1])
             az = float(aLine[2])
-            lats.append([ax,ay,az])
-    return (volumes, lats)    
+            vectors.append([ax,ay,az])
+    return (volumes, vectors)    
     
 def parseResults(directory):
-    """ parses the files in each subdirectory of the given results directory """
-    runs = []
-    dList = []
-    ELists = []
-    VLists = []
-    aLists = []
-    PLists = []
-    sLists = []
-    tList = []
+    """ parses each subdirectory of the given results directory """
+    runs = []   # list of runs to be returned
+    dList = []  # list of directory names
+    ELists = [] # list of energy lists
+    VLists = [] # list of volume lists
+    aLists = [] # list of lattice parameters lists
+    PLists = [] # list of pressure lists
+    sLists = [] # list of Pullay stress list
+    tList = []  # list of runtimes
     for dir in os.listdir(directory):
         if os.path.isdir(directory + dir):
             OUTCAR = False
@@ -121,12 +127,13 @@ def parseResults(directory):
             if not OUTCAR:
                 print 'WARNING: no OUTCAR read\n'
     for i in range(len(dList)):
-        runs.append([dList[i],ELists[i],VLists[i],aLists[i],PLists[i],sLists[i],tList[i]])
+        runs.append([dList[i],ELists[i],VLists[i],aLists[i],PLists[i],
+            sLists[i],tList[i]])
     return runs
 
-#===========================================================================
-# Display and Organization Functions
-#===========================================================================
+#==============================================================================
+#  Display and Organization Functions
+#==============================================================================
 def displayRun(run):
     dirName = run[0]
     EList = run[1]
@@ -190,9 +197,9 @@ def finalValues(runList):
         tList += [run[6]]
     return (dList,EFins,VFins,aFins,PFins,sFins,tList)
 
-#===========================================================================
-# Birch Murnaghan Fitting
-#===========================================================================
+#==============================================================================
+#  Birch Murnaghan Fitting
+#==============================================================================
 def Birch(parameters,vol):
     '''
     given a vector of parameters and volumes, return a vector of energies.
@@ -212,7 +219,7 @@ def objective(pars,y,x):
     err =  y - Birch(pars,x)
     return err
 
-def fitBirch(EList,VList):
+def fitBirch(EList,VList,jobName):
     v = np.array(VList)
     e = np.array(EList)
     vfit = np.linspace(min(v),max(v),100)
@@ -247,25 +254,43 @@ def fitBirch(EList,VList):
          , transform = ax.transAxes)
 
 
-    savefig('birch_fit.png')
+    savefig('%s_birch.png'%jobName)
   
     """
     print 'initial guesses  : ',x0
     print 'fitted parameters: ', birchpars
     """
 
-#===========================================================================
-# MAIN PROGRAM
-#===========================================================================
+# Logger class
+class Logger(object):
+    def __init__(self,jobName):
+        self.terminal = sys.stdout
+        self.log = open('%s_data.log'%jobName, 'a')
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+#==============================================================================
+#  Main Program
+#==============================================================================
 direct = raw_input("Results directory in home or work?: ")
 if 'h' in direct or 'H' in direct:
     RESULTS = HOME
 else:
     RESULTS = WORK
  # where all the results folders are located, change to be input
-jName = raw_input('Job name: ') # check if this exists
-runList = parseResults(RESULTS+jName+'_results/')
+ # directory must end in /
+jobName = raw_input('Job name: ') # check if this exists
+runList = parseResults(RESULTS+jobName+'_results/')
 runList.sort(key=lambda x: x[0]) # sort job list by directory name
+
+temp = sys.stdout
+sys.stdout = Logger(jobName)
+
+
+## make job class? 
+
+# parse slurm job id?
 
 static = True
 for run in runList:
@@ -278,18 +303,12 @@ else:
         displayRun(run)      # check if static or not
 displayFinal(runList)
 
+sys.stdout = temp
+
 fitting = raw_input("Birch fitting? (y/n): ")
 # add general minimization option (E vs ayz)
 if 'y' in fitting or 'Y' in fitting:
     fins = finalValues(runList)
     energies = fins[1]
     volumes = fins[2]
-    fitBirch(energies,volumes)
-
-
-
-# also no need to display for unrelaxed runs, check length of energy list??
-# print relaxed or unrelaxed
-# directory must end in /
-# testing
-#data = parseResults('/Users/Jonas/Google Drive/Laspa_JLK/computation_files/GSFE/full/')
+    fitBirch(energies,volumes,jobName)
