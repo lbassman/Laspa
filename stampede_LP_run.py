@@ -120,6 +120,7 @@ def getLatHex(jName, aList, caList, runLength,NCORES):
     sp.call(['sbatch','%s_submit'%jName])   
 
 hcp = False
+# add default values
 runTime = int(raw_input('Maximum run time in minutes: '))
 structure = raw_input('Crystal structure (fcc, bcc or hcp): ')
 if 'h' in structure or 'H' in structure:
@@ -131,7 +132,8 @@ a_min = float(raw_input('Minimum lattice parameter a in angstroms: '))
 a_max = float(raw_input('Maximum lattice parameter a in angstroms: '))
 na_points = int(raw_input('Number of a values: '))
 jName = raw_input('Job name: ')
-
+resultsDir = raw_input('Results in home or work: ')
+if 'w' in resultsDir or 'W' in resultsDir: HOME = WORK
 # make list of lattice parameters
 aList = np.linspace(a_min, a_max, na_points)
 print aList

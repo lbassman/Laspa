@@ -256,12 +256,77 @@ def fitBirch(EList,VList,jobName):
 
     savefig('%s_birch.png'%jobName)
   
+    print 'initial guesses  : ',x0
+    print 'fitted parameters: ', birchpars
+
+#==============================================================================
+#  HCP Polynomial Fitting
+#==============================================================================
+def Birch(parameters,vol):
+    '''
+    given a vector of parameters and volumes, return a vector of energies.
+    equation From Wikipedia
+    '''
+    E0 = parameters[0]
+    B0 = parameters[1]
+    BP = parameters[2]
+    V0 = parameters[3]
+    term12 = ((V0/vol)**(2.0/3.0) - 1.0)
+    term3 = (6.0 - 4.0*(V0/vol)**(2.0/3.0))
+    E = E0 + (9.0*V0*B0/16.0)*((term12**3.0)*BP + (term12**2.0)*term3)
+    return E
+# and we define an objective function that will be minimized
+def objective(pars,y,x):
+    #we will minimize this function
+    err =  y - Birch(pars,x)
+    return err
+
+def fitBirch(EList,VList,jobName):
+    v = np.array(VList)
+    e = np.array(EList)
+    vfit = np.linspace(min(v),max(v),100)
+    ### fit a parabola to the data
+    # y = ax^2 + bx + c
+    a,b,c = polyfit(v,e,2) #this is from pylab
+    #now here are our initial guesses.
+    v0 = -b/(2*a)
+    e0 = a*v0**2 + b*v0 + c
+    b0 = 2*a*v0
+    bP = 4
+
+    x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Birch function
+
+    birchpars, ier = leastsq(objective, x0, args=(e,v)) #this is from scipy
+ 
+    #now we make a figure summarizing the results
+    plot(v,e,'ro')
+    plot(vfit, Birch(birchpars,vfit), label='Birch fit')
+    xlabel('Volume ($\AA^3$)')
+    ylabel('Energy (eV)')
+    legend(loc='best')
+
+    #add some text to the figure in figure coordinates
+    ax = gca()
+    text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % birchpars[3],
+         transform = ax.transAxes)
+    text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % (birchpars[3]**(1.0/3.0)),
+         transform = ax.transAxes)
+    text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' % (birchpars[1],
+                                                                  birchpars[1]*160.21773)
+         , transform = ax.transAxes)
+
+
+    savefig('%s_birch.png'%jobName)
+  
     """
     print 'initial guesses  : ',x0
     print 'fitted parameters: ', birchpars
     """
 
-# Logger class
+
+#==============================================================================
+#  Output Logging
+#==============================================================================
 class Logger(object):
     def __init__(self,jobName):
         self.terminal = sys.stdout
@@ -305,10 +370,14 @@ displayFinal(runList)
 
 sys.stdout = temp
 
-fitting = raw_input("Birch fitting? (y/n): ")
+fitting = raw_input("Fitting? (Birch or hexagonal): ")
 # add general minimization option (E vs ayz)
-if 'y' in fitting or 'Y' in fitting:
+if 'b' in fitting or 'B' in fitting:
     fins = finalValues(runList)
     energies = fins[1]
     volumes = fins[2]
     fitBirch(energies,volumes,jobName)
+elif 'x' in fitting:
+    fins = finalValues(runList)
+    energies = fins[1]
+    lats = fins[3] 
