@@ -1,15 +1,12 @@
-"""
-Josh Sanz
-jsanz@hmc.edu
-July 25, 2014
-
-edited by Jonas Kaufman
-jlkaufman@hmc.edu
-June 12, 2015
-
-Classes and methods for manipulating POSCARs and the cells they describe
-Note this class has been modified for use only with VASP 5 style POSCARs
-"""
+#==============================================================================
+#  Josh Sanz jsanz@hmc.edu
+#  July 25, 2014
+#  edited by Jonas Kaufman jlkaufman@hmc.edu
+#  June 12, 2015
+#  Classes and methods for manipulating POSCARs and the cells they describe
+#  This class has been modified for use only with VASP 5 style POSCARs
+#  (chemical symbols listed on the line after the lattice vectors
+#==============================================================================
 class Site:
     """ holds a single atomic site for the Cell class """
     def __init__(self, position=[0,0,0], index = 0, xfree = True,

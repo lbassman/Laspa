@@ -3,17 +3,15 @@
 #==============================================================================
 #  Jonas Kaufman jlkaufman@hmc.edu
 #  June 29, 2015
-#  Script to parse VASP output directories located in
-#  parent directory jobName_results and summarize output, perform fitting
-#  Outputs data for each ionic step of each job and a summary of the final data 
+#  Script to parse VASP output directories located in a given results directory
+#  and summarize output, perform fitting
+#  Outputs data for each ionic step of each job and a summary of the final data
 #  for all jobs, writes data to a file jobName_data.log
-#  Contains an optional Birch-Murnaghan fitting function to fit energy/volume 
-#  data and output a graph to jobName_birch.png
 #==============================================================================
-# READ THIS:
-# Run 'module load python' before using on Stampede
-# Make script executable using 'chmod +x _____.py' to call as bash script
-
+"""
+Run 'module load python' before using on Stampede
+Make script executable using 'chmod +x _____.py' to call as bash script
+"""
 import matplotlib
 matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
 import matplotlib.pyplot as plt
@@ -106,30 +104,40 @@ def parseResults(directory):
     PLists = [] # list of pressure lists
     sLists = [] # list of Pullay stress list
     tList = []  # list of runtimes
-    for dir in os.listdir(directory):
-        if os.path.isdir(directory + dir):
-            OUTCAR = False
-            print 'Found directory %s\nParsing...'%dir
-            for file in os.listdir(directory + dir):        
-                if fnmatch.fnmatch(file,'OUTCAR'):
-                    pathToFile = directory+dir+'/'+file
-                    dList += [dir] # add directory name
-                    ELists += [getEnergies(pathToFile)] # add energy list
-                    sizeData = getSizes(pathToFile) 
-                    VLists += [sizeData[0]] # add volume list
-                    aLists += [sizeData[1]] # add lattice parameters lists 
-                    pressureData = getPressures(pathToFile)
-                    PLists += [pressureData[0]] # add pressure lists
-                    sLists += [pressureData[1]] # add Pullay stress lists
-                    tList += [getTime(pathToFile)] # add time
-                    print 'OUTCAR read\n'
-                    OUTCAR = True
-            if not OUTCAR:
-                print 'WARNING: no OUTCAR read\n'
+    subdirs = findDirectories(directory)
+    for dir in subdirs:
+        OUTCAR = False
+        print 'Found directory %s\nParsing...'%dir
+        for file in os.listdir(directory + dir):        
+            if fnmatch.fnmatch(file,'OUTCAR'):
+                pathToFile = directory+dir+'/'+file
+                dList += [dir] # add directory name
+                ELists += [getEnergies(pathToFile)] # add energy list
+                sizeData = getSizes(pathToFile) 
+                VLists += [sizeData[0]] # add volume list
+                aLists += [sizeData[1]] # add lattice parameters lists 
+                pressureData = getPressures(pathToFile)
+                PLists += [pressureData[0]] # add pressure lists
+                sLists += [pressureData[1]] # add Pullay stress lists
+                tList += [getTime(pathToFile)] # add time
+                print 'OUTCAR read\n'
+                OUTCAR = True
+        if not OUTCAR:
+            print 'WARNING: no OUTCAR read\n'
     for i in range(len(dList)):
         runs.append([dList[i],ELists[i],VLists[i],aLists[i],PLists[i],
             sLists[i],tList[i]])
     return runs
+
+def findDirectories(parent):
+    """ provides a list of subdirectories in a given parent directory """
+    children = []
+    for dir in os.listdir(parent):
+        if os.path.isdir(parent + dir):
+            first = dir[0]
+            if not first == '.': # don't include .___ directories
+                children += [dir]
+    return children
 
 #==============================================================================
 #  Display and Organization Functions
@@ -144,7 +152,7 @@ def displayRun(run):
     time = run[6]
     lines = []
     lines += [dirName]
-    headings = ('E0','Volume','ax','ay','az','Pressure','Pullay')
+    headings = ('E0','Volume','ax','ay','az','Pressure','Pullay stress')
     lines += [(('%-8s\t'*len(headings))%headings)] # need to fix columns
     # come up with better formatting
     nSteps = len(EList)
@@ -163,9 +171,10 @@ def displayFinal(runList):
     fins = finalValues(runList)
     lines = []
     lines += ['Final values']
-    headings = ('E0','Volume','ax','ay','az','Pressure','Pullay')
+    headings = ('Name','E0','Volume','ax','ay','az','Pressure','Pullay stress','Time')
     lines += [(('%-8s\t'*len(headings))%headings)]
     for i in range(len(runList)):
+        d = fins[0][i]
         E = fins[1][i]
         V = fins[2][i]
         lats = fins[3][i]
@@ -174,9 +183,9 @@ def displayFinal(runList):
         az = lats[2]
         P = fins[4][i]
         s = fins[5][i]
+        t = fins[6][i]
         data = (E,V,ax,ay,az,P,s)
-        lines += [(('%.6f\t'*len(data))%data)]
-        # run time? dir name?
+        lines += [('%-14s\t'%d)+(('%.6f\t'*len(data))%data)+('%d'%t)]
     print '\n'.join(lines)+'\n'
 
 def finalValues(runList):
@@ -323,7 +332,6 @@ def fitBirch(EList,VList,jobName):
     print 'fitted parameters: ', birchpars
     """
 
-
 #==============================================================================
 #  Output Logging
 #==============================================================================
@@ -338,25 +346,41 @@ class Logger(object):
 #==============================================================================
 #  Main Program
 #==============================================================================
-direct = raw_input("Results directory in home or work?: ")
-if 'h' in direct or 'H' in direct:
-    RESULTS = HOME
+# get parent directory
+direct = raw_input('Parent directory (home/, work/ or ____/): ')
+first = direct[0]
+if first == 'h' or first == 'H':
+    PARENT = HOME
+elif first == 'w' or first == 'W':
+    PARENT = WORK
 else:
-    RESULTS = WORK
- # where all the results folders are located, change to be input
- # directory must end in /
-jobName = raw_input('Job name: ') # check if this exists
-runList = parseResults(RESULTS+jobName+'_results/')
+    PARENT = direct
+print PARENT+'\n'
+
+# find and list subdirectories
+children = findDirectories(PARENT)
+print 'Found these subdirectories:'
+print '\n'.join(children)+'\n'
+
+# choose results directory
+valid = False
+while not valid:
+    jobName = raw_input('Directory to parse: ')
+    for dir in children:
+        if jobName in dir:
+            jobName = dir
+            print jobName+'\n'
+            valid = True
+
+# parse the chosen results directory
+runList = parseResults(PARENT+jobName+'/')
 runList.sort(key=lambda x: x[0]) # sort job list by directory name
 
-temp = sys.stdout
+jobName.replace('_results','') # remove '_results' from job name
+temp = sys.stdout # begin logging output
 sys.stdout = Logger(jobName)
 
-
-## make job class? 
-
-# parse slurm job id?
-
+# check if runs are static and display data
 static = True
 for run in runList:
     EList = run[1]
@@ -365,12 +389,13 @@ if static:
     print 'All static runs\n'
 else:
     for run in runList:
-        displayRun(run)      # check if static or not
+        displayRun(run) 
 displayFinal(runList)
 
-sys.stdout = temp
+sys.stdout = temp # stop logging output
 
-fitting = raw_input("Fitting? (Birch or hexagonal): ")
+# run fitting on data
+fitting = raw_input('Fitting? (Birch or hexagonal): ')
 # add general minimization option (E vs ayz)
 if 'b' in fitting or 'B' in fitting:
     fins = finalValues(runList)
