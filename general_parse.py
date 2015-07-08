@@ -13,13 +13,19 @@ Run 'module load python' before using on Stampede
 Make script executable using 'chmod +x _____.py' to call as bash script
 """
 import matplotlib
-matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
+#matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 from pylab import * # this includes numpy as np
-from scipy.optimize import leastsq
+import scipy.optimize as optimize
 import os
 import fnmatch
 import sys
+
+# ^ make some of these imports in if statements
+
 # home and work directories (SET THESE TO YOUR OWN)
 HOME = '/home1/03324/tg826232/'
 WORK = '/work/03324/tg826232/'
@@ -102,7 +108,7 @@ def parseResults(directory):
     VLists = [] # list of volume lists
     aLists = [] # list of lattice parameters lists
     PLists = [] # list of pressure lists
-    sLists = [] # list of Pullay stress list
+    sLists = [] # list of Pullay stress lists
     tList = []  # list of runtimes
     subdirs = findDirectories(directory)
     for dir in subdirs:
@@ -210,10 +216,10 @@ def finalValues(runList):
 #  Birch Murnaghan Fitting
 #==============================================================================
 def Birch(parameters,vol):
-    '''
+    """
     given a vector of parameters and volumes, return a vector of energies.
     equation From Wikipedia
-    '''
+    """
     E0 = parameters[0]
     B0 = parameters[1]
     BP = parameters[2]
@@ -222,13 +228,14 @@ def Birch(parameters,vol):
     term3 = (6.0 - 4.0*(V0/vol)**(2.0/3.0))
     E = E0 + (9.0*V0*B0/16.0)*((term12**3.0)*BP + (term12**2.0)*term3)
     return E
-# and we define an objective function that will be minimized
+
 def objective(pars,y,x):
-    #we will minimize this function
+    """ function to be minimized """   
     err =  y - Birch(pars,x)
     return err
 
 def fitBirch(EList,VList,jobName):
+    """ fit energy/volume data to BM EoS, plot results """
     v = np.array(VList)
     e = np.array(EList)
     vfit = np.linspace(min(v),max(v),100)
@@ -243,7 +250,7 @@ def fitBirch(EList,VList,jobName):
 
     x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Birch function
 
-    birchpars, ier = leastsq(objective, x0, args=(e,v)) #this is from scipy
+    birchpars, ier = optimize.leastsq(objective, x0, args=(e,v)) #this is from scipy
  
     #now we make a figure summarizing the results
     plot(v,e,'ro')
@@ -261,7 +268,6 @@ def fitBirch(EList,VList,jobName):
     text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' % (birchpars[1],
                                                                   birchpars[1]*160.21773)
          , transform = ax.transAxes)
-
 
     savefig('%s_birch.png'%jobName)
   
@@ -270,67 +276,54 @@ def fitBirch(EList,VList,jobName):
 
 #==============================================================================
 #  HCP Polynomial Fitting
-#==============================================================================
-def Birch(parameters,vol):
-    '''
-    given a vector of parameters and volumes, return a vector of energies.
-    equation From Wikipedia
-    '''
-    E0 = parameters[0]
-    B0 = parameters[1]
-    BP = parameters[2]
-    V0 = parameters[3]
-    term12 = ((V0/vol)**(2.0/3.0) - 1.0)
-    term3 = (6.0 - 4.0*(V0/vol)**(2.0/3.0))
-    E = E0 + (9.0*V0*B0/16.0)*((term12**3.0)*BP + (term12**2.0)*term3)
-    return E
-# and we define an objective function that will be minimized
-def objective(pars,y,x):
-    #we will minimize this function
-    err =  y - Birch(pars,x)
-    return err
+#==============================================================================`
+def quart(data,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o):
+    """ general bivariate quartic function """
+    x = data[0] # is this indexing right for np?
+    y = data[1]
+    poly = a + b*x + c*y + d*x**2 + e*x*y + f*y**2
+    poly += (g*x**3 + h*x**2*y + i*x*y**2 + j*y**3)
+    poly += (k*x**4 + l*x**3*y + m*x**2*y**2 + n*x*y**3 + o*y**4)
+    return poly
 
-def fitBirch(EList,VList,jobName):
-    v = np.array(VList)
-    e = np.array(EList)
-    vfit = np.linspace(min(v),max(v),100)
-    ### fit a parabola to the data
-    # y = ax^2 + bx + c
-    a,b,c = polyfit(v,e,2) #this is from pylab
-    #now here are our initial guesses.
-    v0 = -b/(2*a)
-    e0 = a*v0**2 + b*v0 + c
-    b0 = 2*a*v0
-    bP = 4
-
-    x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Birch function
-
-    birchpars, ier = leastsq(objective, x0, args=(e,v)) #this is from scipy
- 
-    #now we make a figure summarizing the results
-    plot(v,e,'ro')
-    plot(vfit, Birch(birchpars,vfit), label='Birch fit')
-    xlabel('Volume ($\AA^3$)')
-    ylabel('Energy (eV)')
-    legend(loc='best')
-
-    #add some text to the figure in figure coordinates
-    ax = gca()
-    text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % birchpars[3],
-         transform = ax.transAxes)
-    text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % (birchpars[3]**(1.0/3.0)),
-         transform = ax.transAxes)
-    text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' % (birchpars[1],
-                                                                  birchpars[1]*160.21773)
-         , transform = ax.transAxes)
-
-
-    savefig('%s_birch.png'%jobName)
-  
+def hexFit(EList,aList,cList):
     """
-    print 'initial guesses  : ',x0
-    print 'fitted parameters: ', birchpars
+    fits energy/lattice parameter data to quart, plots results
+    and finds the minimum of the fit function
     """
+    aMin = min(aList)
+    aMax = max(aList)
+    cMin = min(cList)
+    cMax = max(cList)
+    data = []
+    guess = [1] * 15 # initial guesses for quart parameters
+    params, pcov = optimize.curve_fit(quart,[aList,cList],EList,guess)
+    a,b,c,d,e,f,g,h,i,j,k,l,m,n,o = params
+    
+    nPoints = 50
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    X = np.linspace(aMin, aMax, nPoints)
+    Y = np.linspace(cMin, cMax, nPoints)
+    X, Y = np.meshgrid(X, Y)
+    Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
+        alpha = 0.5, linewidth=0, antialiased=False)
+    #ax.set_zlim(-1.01, 1.01)
+    #ax.zaxis.set_major_locator(LinearLocator(10))
+    #ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    #fig.colorbar(surf, shrink=0.5, aspect=5)
+    #savefig('hex.png')
+
+    points = ax.scatter(aList, cList, EList)
+    plt.show()
+    guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
+    opt = optimize.minimize(quart,guesses,args=tuple(params),method = 'Nelder-Mead')
+    print opt.message
+    a,c = opt.x
+    print 'a:\t%f'%a
+    print 'c:\t%f'%c
+    print 'c/a:\t%f'%(c/a)
 
 #==============================================================================
 #  Output Logging
@@ -346,6 +339,7 @@ class Logger(object):
 #==============================================================================
 #  Main Program
 #==============================================================================
+"""
 # get parent directory
 direct = raw_input('Parent directory (home/, work/ or ____/): ')
 first = direct[0]
@@ -376,7 +370,7 @@ while not valid:
 runList = parseResults(PARENT+jobName+'/')
 runList.sort(key=lambda x: x[0]) # sort job list by directory name
 
-jobName.replace('_results','') # remove '_results' from job name
+jobName = jobName.replace('_results','') # remove '_results' from job name
 temp = sys.stdout # begin logging output
 sys.stdout = Logger(jobName)
 
@@ -405,4 +399,19 @@ if 'b' in fitting or 'B' in fitting:
 elif 'x' in fitting:
     fins = finalValues(runList)
     energies = fins[1]
-    lats = fins[3] 
+    lats = fins[3]
+    aList = []
+    cList = []
+    for i in range(len(lats)):
+        aList += [lats[i][1]]
+        cList += [lats[i][2]]
+    print energies
+    print aList
+    print cList
+    hexFit(energies,aList,cList)
+"""
+# testing
+energies = [-4.48353915, -5.7511142, -6.39364456, -6.6676542, -6.72839353, -7.2238661, -7.42714853, -7.39298616, -7.23097708, -6.98963985, -7.16025313, -6.9468578, -6.66136602, -6.3574163, -6.05474158, -6.21273377, -5.85367773, -5.502652, -5.18527606, -4.90994409, -5.09583155, -4.70815606, -4.36632632, -4.08584288, -3.86498048]
+aList = [2.299999196, 2.299999196, 2.299999196, 2.299999196, 2.299999196, 2.549999108, 2.549999108, 2.549999108, 2.549999108, 2.549999108, 2.799999021, 2.799999021, 2.799999021, 2.799999021, 2.799999021, 3.049998933, 3.049998933, 3.049998933, 3.049998933, 3.049998933, 3.299998846, 3.299998846, 3.299998846, 3.299998846, 3.299998846]
+cList = [3.45, 3.7375, 4.025, 4.3125, 4.6, 3.825, 4.14375, 4.4625, 4.78125, 5.1, 4.2, 4.55, 4.9, 5.25, 5.6, 4.575, 4.95625, 5.3375, 5.71875, 6.1, 4.95, 5.3625, 5.775, 6.1875, 6.6]
+hexFit(energies,aList,cList)
