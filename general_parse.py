@@ -9,23 +9,12 @@
 #  for all jobs, writes data to a file jobName_data.log
 #==============================================================================
 """
-Run 'module load python' before using on Stampede
+Run 'module load python' before using on Stampede for fitting to work
 Make script executable using 'chmod +x _____.py' to call as bash script
 """
-import matplotlib
-#matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
-from pylab import * # this includes numpy as np
-import scipy.optimize as optimize
 import os
 import fnmatch
 import sys
-
-# ^ make some of these imports in if statements
-
 # home and work directories (SET THESE TO YOUR OWN)
 HOME = '/home1/03324/tg826232/'
 WORK = '/work/03324/tg826232/'
@@ -286,7 +275,7 @@ def quart(data,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o):
     poly += (k*x**4 + l*x**3*y + m*x**2*y**2 + n*x*y**3 + o*y**4)
     return poly
 
-def hexFit(EList,aList,cList):
+def hexFit(EList,aList,cList,jobName):
     """
     fits energy/lattice parameter data to quart, plots results
     and finds the minimum of the fit function
@@ -307,16 +296,20 @@ def hexFit(EList,aList,cList):
     Y = np.linspace(cMin, cMax, nPoints)
     X, Y = np.meshgrid(X, Y)
     Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
-        alpha = 0.5, linewidth=0, antialiased=False)
+    surf = ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',#cmap=cm.coolwarm,
+        alpha = 0.3, linewidth=0, antialiased=False)
     #ax.set_zlim(-1.01, 1.01)
     #ax.zaxis.set_major_locator(LinearLocator(10))
     #ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
     #fig.colorbar(surf, shrink=0.5, aspect=5)
     #savefig('hex.png')
+    points = ax.scatter(aList, cList, EList,marker='o',c='r')
 
-    points = ax.scatter(aList, cList, EList)
-    plt.show()
+    ax.set_xlabel('a (A)')
+    ax.set_ylabel('c (A)')
+    ax.set_zlabel('Energy (eV)')
+    savefig('%s_hex.png'%jobName,dpi=300)
+
     guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
     opt = optimize.minimize(quart,guesses,args=tuple(params),method = 'Nelder-Mead')
     print opt.message
@@ -339,7 +332,6 @@ class Logger(object):
 #==============================================================================
 #  Main Program
 #==============================================================================
-"""
 # get parent directory
 direct = raw_input('Parent directory (home/, work/ or ____/): ')
 first = direct[0]
@@ -390,6 +382,13 @@ sys.stdout = temp # stop logging output
 
 # run fitting on data
 fitting = raw_input('Fitting? (Birch or hexagonal): ')
+if fitting:
+    import matplotlib
+    matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from pylab import * # this includes numpy as np
+    import scipy.optimize as optimize
 # add general minimization option (E vs ayz)
 if 'b' in fitting or 'B' in fitting:
     fins = finalValues(runList)
@@ -408,10 +407,4 @@ elif 'x' in fitting:
     print energies
     print aList
     print cList
-    hexFit(energies,aList,cList)
-"""
-# testing
-energies = [-4.48353915, -5.7511142, -6.39364456, -6.6676542, -6.72839353, -7.2238661, -7.42714853, -7.39298616, -7.23097708, -6.98963985, -7.16025313, -6.9468578, -6.66136602, -6.3574163, -6.05474158, -6.21273377, -5.85367773, -5.502652, -5.18527606, -4.90994409, -5.09583155, -4.70815606, -4.36632632, -4.08584288, -3.86498048]
-aList = [2.299999196, 2.299999196, 2.299999196, 2.299999196, 2.299999196, 2.549999108, 2.549999108, 2.549999108, 2.549999108, 2.549999108, 2.799999021, 2.799999021, 2.799999021, 2.799999021, 2.799999021, 3.049998933, 3.049998933, 3.049998933, 3.049998933, 3.049998933, 3.299998846, 3.299998846, 3.299998846, 3.299998846, 3.299998846]
-cList = [3.45, 3.7375, 4.025, 4.3125, 4.6, 3.825, 4.14375, 4.4625, 4.78125, 5.1, 4.2, 4.55, 4.9, 5.25, 5.6, 4.575, 4.95625, 5.3375, 5.71875, 6.1, 4.95, 5.3625, 5.775, 6.1875, 6.6]
-hexFit(energies,aList,cList)
+    hexFit(energies,aList,cList,jobName)
