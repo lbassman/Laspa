@@ -26,7 +26,7 @@ EMAIL = 'jlkaufman@hmc.edu'
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
 
-def genSubScript(jName,dirList,runLength,NCORES):
+def genSubScript(jName,dirList,runLength,nCores):
     """ creates a submission script for Stampede's SLURM queueing system """
     # uses integer division
     hrs = runLength/60
@@ -34,7 +34,7 @@ def genSubScript(jName,dirList,runLength,NCORES):
     string = ('#!/bin/bash\n' +
     '#SBATCH -J ' + jName +  '\n' +           # specify job name
     '#SBATCH -o ' + jName + '%j\n' +          # write output to this file
-    '#SBATCH -n %d\n'%(NCORES*len(dirList)) + # request cores
+    '#SBATCH -n %d\n'%(nCores*len(dirList)) + # request cores
     '#SBATCH -p normal\n' +                   # send to normal queue
     '#SBATCH -t %02d:%02d:00\n'%(hrs,mins) +  # set maximum wall time
     '#SBATCH --mail-user=' + EMAIL +'\n' +    # set email
@@ -44,7 +44,7 @@ def genSubScript(jName,dirList,runLength,NCORES):
     for i in range(len(dirList)):
         # change to work directory, run vasp
         string += 'cd '+WORK+'%s\n'%dirList[i]
-        string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(NCORES*i,NCORES)
+        string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(nCores*i,nCores)
     # wait for all jobs to finish, move to results directory
     string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(jName)
     for i in range(len(dirList)):
@@ -55,7 +55,7 @@ def genSubScript(jName,dirList,runLength,NCORES):
     f.write(string)
     f.close()
 
-def getLatCubic(jName, aList,runLength,NCORES):
+def getLatCubic(jName, aList,runLength,nCores):
     """
     creates the necessary POSCARs for a cubic structure
     generates a subdirectory for each vasp run, each with the necessary files,
@@ -74,11 +74,11 @@ def getLatCubic(jName, aList,runLength,NCORES):
                 [dirName])
         sp.call(('cp -r %s '%dirName)+WORK,shell=True)
     # create submission script and run
-    genSubScript(jName,dirList,runLength,NCORES)
+    genSubScript(jName,dirList,runLength,nCores)
     sp.call('chmod u+x %s_submit'%jName,shell=True)
     sp.call(['sbatch','%s_submit'%jName]) 
 
-def getLatHex(jName, aList, caList, runLength,NCORES):
+def getLatHex(jName, aList, caList, runLength,nCores):
     """
     creates the necessary POSCARs for a hexagonal structure
     generates a subdirectory for each vasp run, each with the necessary files,
@@ -105,7 +105,7 @@ def getLatHex(jName, aList, caList, runLength,NCORES):
                     [dirName])
             sp.call(('cp -r %s '%dirName)+WORK,shell=True)
     # create submission script and run
-    genSubScript(jName,dirList,runLength,NCORES)  
+    genSubScript(jName,dirList,runLength,nCores)  
     sp.call('chmod u+x %s_submit'%jName,shell=True)
     sp.call(['sbatch','%s_submit'%jName])   
 
@@ -171,6 +171,6 @@ if hcp:
     caList = np.linspace(caMin, caMax, caPoints).tolist()
     print 'c/a values:'
     print caList,'\n'
-    getLatHex(jName,aList,caList,runLength,NCORES)
+    getLatHex(jName,aList,caList,runLength,nCores)
 else:
-    getLatCubic(jName,aList,runLength,NCORES)
+    getLatCubic(jName,aList,runLength,nCores)
