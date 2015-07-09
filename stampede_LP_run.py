@@ -25,8 +25,6 @@ WORK = '/work/03324/tg826232/'
 EMAIL = 'jlkaufman@hmc.edu'
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
-# number of cores for each calculation (16 should be fine)
-NCORES = 16
 
 def genSubScript(jName,dirList,runLength,NCORES):
     """ creates a submission script for Stampede's SLURM queueing system """
@@ -154,6 +152,10 @@ runLength = raw_input('Maximum run time (minutes): ')
 if not runLength: runLength = 300
 else: runLength = int(runLength)
 print runLength,'\n'
+nCores = raw_input('Number of cores per simulation: ')
+if not nCores: nCores = 16
+else: nCores = int(nCores)
+print nCores,'\n'
 jName = raw_input('Job name: ')
 if not jName: jName = 'LP'
 print jName,'\n'
