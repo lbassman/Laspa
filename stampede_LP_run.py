@@ -44,7 +44,8 @@ def genSubScript(jName,dirList,runLength,nCores):
     for i in range(len(dirList)):
         # change to work directory, run vasp
         string += 'cd '+WORK+'%s\n'%dirList[i]
-        string += "ibrun -o %d -n %d vasp_std > vasp_output.out &\n"%(nCores*i,nCores)
+        string += 'ibrun -o %d '%(nCores*i)
+        string += '-n %d vasp_std > vasp_output.out &\n'%nCores
     # wait for all jobs to finish, move to results directory
     string += 'wait\ncd '+HOME+'\nmkdir %s_results\n'%(jName)
     for i in range(len(dirList)):

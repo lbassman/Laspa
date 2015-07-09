@@ -18,7 +18,8 @@ import sys
 # home and work directories (SET THESE TO YOUR OWN)
 HOME = '/home1/03324/tg826232/'
 WORK = '/work/03324/tg826232/'
-
+# image resolution for plots
+DPI = 300
 #==============================================================================
 #  Parsing Functions
 #==============================================================================
@@ -162,12 +163,13 @@ def displayRun(run):
     lines += ['%d seconds'%time]
     print '\n'.join(lines)+'\n'
 
-def displayFinal(runList):
+def displayFinal(runList): # fix the column formatting
     fins = finalValues(runList)
     lines = []
     lines += ['Final values']
-    headings = ('Name','E0','Volume','ax','ay','az','Pressure','Pullay stress','Time')
-    lines += [(('%-8s\t'*len(headings))%headings)]
+    headings = ('Name','E0','Volume','ax','ay','az',
+        'Pressure','Pullay stress','Time')
+    lines += [(('%-12s\t'*len(headings))%headings)]
     for i in range(len(runList)):
         d = fins[0][i]
         E = fins[1][i]
@@ -225,50 +227,51 @@ def objective(pars,y,x):
 
 def fitBirch(EList,VList,jobName):
     """ fit energy/volume data to BM EoS, plot results """
-    v = np.array(VList)
-    e = np.array(EList)
-    vfit = np.linspace(min(v),max(v),100)
-    ### fit a parabola to the data
-    # y = ax^2 + bx + c
-    a,b,c = polyfit(v,e,2) #this is from pylab
-    #now here are our initial guesses.
-    v0 = -b/(2*a)
-    e0 = a*v0**2 + b*v0 + c
-    b0 = 2*a*v0
-    bP = 4
-
-    x0 = [e0, b0, bP, v0] #initial guesses in the same order used in the Birch function
-
-    birchpars, ier = optimize.leastsq(objective, x0, args=(e,v)) #this is from scipy
- 
-    #now we make a figure summarizing the results
-    plot(v,e,'ro')
-    plot(vfit, Birch(birchpars,vfit), label='Birch fit')
+    VFit = np.linspace(min(VList),max(VList),100)
+    # fit a parabola to the data to get guesses
+    a,b,c = polyfit(VList,EList,2)
+    V0 = -b/(2*a)
+    E0 = a*V0**2 + b*V0 + c
+    B0 = 2*a*V0
+    BP = 4
+    x0 = [E0, B0, BP, V0]
+    # fit the data to Birch
+    BirchPars, ier = optimize.leastsq(objective, x0, args=(EList,VList))
+    # make a plot of the data and the fit
+    # plt.plot
+    plot(VList,EList,'ro')
+    plot(VFit, Birch(BirchPars,VFit), label='Birch fit')
     xlabel('Volume ($\AA^3$)')
     ylabel('Energy (eV)')
     legend(loc='best')
 
     #add some text to the figure in figure coordinates
     ax = gca()
-    text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % birchpars[3],
-         transform = ax.transAxes)
-    text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % (birchpars[3]**(1.0/3.0)),
-         transform = ax.transAxes)
-    text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' % (birchpars[1],
-                                                                  birchpars[1]*160.21773)
-         , transform = ax.transAxes)
+    #text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % BirchPars[3],
+     #    transform = ax.transAxes)
+    # text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % 
+        (BirchPars[3]**(1.0/3.0)),
+      #   transform = ax.transAxes)
+    #text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' 
+        % (BirchPars[1],
+        #                                          BirchPars[1]*160.21773)
+       #  , transform = ax.transAxes)
 
-    savefig('%s_birch.png'%jobName)
+    savefig('%s_birch.png'%jobName,dpi=DPI)
   
     print 'initial guesses  : ',x0
-    print 'fitted parameters: ', birchpars
+    print 'fitted parameters: ', BirchPars
+    E0,B0,BP,V0 = BirchPars
+    print 'Bulk modulus:\t%f'%B0
+    print 'Volume:\t%f'%V0
+
 
 #==============================================================================
 #  HCP Polynomial Fitting
 #==============================================================================`
 def quart(data,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o):
-    """ general bivariate quartic function """
-    x = data[0] # is this indexing right for np?
+    """ general bivariate quartic polynomial """
+    x = data[0] 
     y = data[1]
     poly = a + b*x + c*y + d*x**2 + e*x*y + f*y**2
     poly += (g*x**3 + h*x**2*y + i*x*y**2 + j*y**3)
@@ -280,39 +283,41 @@ def hexFit(EList,aList,cList,jobName):
     fits energy/lattice parameter data to quart, plots results
     and finds the minimum of the fit function
     """
+    # perform fitting
     aMin = min(aList)
     aMax = max(aList)
     cMin = min(cList)
     cMax = max(cList)
     data = []
     guess = [1] * 15 # initial guesses for quart parameters
+    print 'Fitting data...'
     params, pcov = optimize.curve_fit(quart,[aList,cList],EList,guess)
+    print 'Done\n'
     a,b,c,d,e,f,g,h,i,j,k,l,m,n,o = params
-    
-    nPoints = 50
+    # generate graph
+    NPOINTS = 50
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    X = np.linspace(aMin, aMax, nPoints)
-    Y = np.linspace(cMin, cMax, nPoints)
+    X = np.linspace(aMin, aMax, NPOINTS)
+    Y = np.linspace(cMin, cMax, NPOINTS)
     X, Y = np.meshgrid(X, Y)
     Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-    surf = ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',#cmap=cm.coolwarm,
+    surf = ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',
         alpha = 0.3, linewidth=0, antialiased=False)
-    #ax.set_zlim(-1.01, 1.01)
-    #ax.zaxis.set_major_locator(LinearLocator(10))
-    #ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-    #fig.colorbar(surf, shrink=0.5, aspect=5)
-    #savefig('hex.png')
     points = ax.scatter(aList, cList, EList,marker='o',c='r')
-
-    ax.set_xlabel('a (A)')
-    ax.set_ylabel('c (A)')
+    ax.set_xlabel('a (/$\AA$)')
+    ax.set_ylabel('c (/$\AA$)')
     ax.set_zlabel('Energy (eV)')
-    savefig('%s_hex.png'%jobName,dpi=300)
-
+    savefig('%s_hex.png'%jobName,dpi=DPI)
+    # find minimum of fit function
     guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
-    opt = optimize.minimize(quart,guesses,args=tuple(params),method = 'Nelder-Mead')
-    print opt.message
+    print 'Finding minimum...'
+    opt = optimize.minimize(quart,guesses,args=tuple(params),
+        method='Nelder-Mead')
+    if opt.success:
+        print 'Done\n'
+    else:
+        print opt.message
     a,c = opt.x
     print 'a:\t%f'%a
     print 'c:\t%f'%c
@@ -404,7 +409,4 @@ elif 'x' in fitting:
     for i in range(len(lats)):
         aList += [lats[i][1]]
         cList += [lats[i][2]]
-    print energies
-    print aList
-    print cList
     hexFit(energies,aList,cList,jobName)
