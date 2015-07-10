@@ -57,7 +57,8 @@ def makeISF(nShifts,nLayers,ny,nGap):
                 for j in range(cell.numberOfAtomsOfElement(i)):
                         x,y,z = cell.sites[i][j].position
                         if z > halfz:
-                            cell.sites[i][j].move([x-disp*0.5, y - disp*(1.0/6.0)/ny, z])
+                            #cell.sites[i][j].move([x-disp*0.5, y - disp*(1.0/6.0)/ny, z])
+                            cell.sites[i][j].move([x, y + disp*(1.0/3.0)/ny, z])
                         if z < topTwo or z > bottomTwo:
                             cell.sites[i][j].zfree = False
         cell.sendToPOSCAR(('POSCAR_%.5f'%disp).replace('.',''))
@@ -75,7 +76,8 @@ def makeESF(nShifts,nLayers,ny,nGap):
                 for j in range(cell.numberOfAtomsOfElement(i)):
                         x,y,z = cell.sites[i][j].position
                         if z < halfz:
-                            cell.sites[i][j].move([x+disp*0.5, y+disp*(1.0/6.0)/ny, z])
+                            #cell.sites[i][j].move([x+disp*0.5, y+disp*(1.0/6.0)/ny, z])
+                            cell.sites[i][j].move([x, y+disp*(1.0/3.0)/ny, z])
                         if z < topTwo or z > bottomTwo:
                             cell.sites[i][j].zfree = False
         num = disp + 1.0
@@ -129,6 +131,7 @@ def runJobs(jName, aList,runLength,NCORES):
     genSubScript(jName,dirList,runLength,NCORES)
     sp.call('chmod u+x %s_submit'%jName,shell=True)
     sp.call(['sbatch','%s_submit'%jName])  
+    
 #==============================================================================
 #  Main Program
 #==============================================================================
@@ -154,7 +157,12 @@ nShifts = raw_input('Number shifts per stacking fault: ')
 if not nShifts: nShifts = 10
 else: nShifts = int(nShifts)
 print nShifts,'\n'
-# pathway (ISF or full)
+pathway = raw_input('Fault pathway (ISF only or ESF): ')
+if 'e' in pathway or 'E' in pathway:
+    pathway = 'ESF'
+else:
+    pathway = 'ISF'
+print pathway,'\n'
 runLength = raw_input('Maximum run time (minutes): ')
 if not runLength: runLength = 300
 else: runLength = int(runLength)
@@ -198,8 +206,12 @@ while layers:
 cell.setSiteMobilities(False,False,True)
 cell.sendToPOSCAR()
 
+totalDisp = 1.0
+points = nShifts + 1
 makeISF(nShifts,nLayers,ny,nGap) # add ISF
-makeESF(nShifts,nLayers,ny,nGap) # add ESF
-
-aList = np.linspace(0.0, 2.0, 2*nShifts+1)
+if pathway == 'ESF':
+    makeESF(nShifts,nLayers,ny,nGap) # add ESF
+    totalDisp = 2.0
+    points = 2*nShifts+1
+aList = np.linspace(0.0, totalDisp,points)
 runJobs(jobName,aList,runLength,NCORES) # run jobs
