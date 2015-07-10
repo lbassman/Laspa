@@ -159,7 +159,7 @@ def displayRun(run):
         az = lats[2]
         data = (EList[i],VList[i],ax,ay,az,PList[i],sList[i])
         lines += [(('%.6f\t'*len(data))%data)]
-    lines += ['%d ionic steps'%nSteps]    
+    lines += ['%d ionic steps'%nSteps]    # subtract 1?
     lines += ['%d seconds'%time]
     print '\n'.join(lines)+'\n'
 
@@ -227,7 +227,8 @@ def objective(pars,y,x):
 
 def fitBirch(EList,VList,jobName):
     """ fit energy/volume data to BM EoS, plot results """
-    VFit = np.linspace(min(VList),max(VList),100)
+    NPOINTS = 100
+    VFit = np.linspace(min(VList),max(VList),NPOINTS)
     # fit a parabola to the data to get guesses
     a,b,c = polyfit(VList,EList,2)
     V0 = -b/(2*a)
@@ -236,35 +237,21 @@ def fitBirch(EList,VList,jobName):
     BP = 4
     x0 = [E0, B0, BP, V0]
     # fit the data to Birch
+    print 'Fitting data...'
     BirchPars, ier = optimize.leastsq(objective, x0, args=(EList,VList))
+    print 'Done\n'
     # make a plot of the data and the fit
-    # plt.plot
+    plot(VFit, Birch(BirchPars,VFit),c='b')
     plot(VList,EList,'ro')
-    plot(VFit, Birch(BirchPars,VFit), label='Birch fit')
     xlabel('Volume ($\AA^3$)')
     ylabel('Energy (eV)')
-    legend(loc='best')
-
-    #add some text to the figure in figure coordinates
-    ax = gca()
-    #text(0.4,0.7,'Min volume = %1.5f $\AA^3$' % BirchPars[3],
-     #    transform = ax.transAxes)
-    # text(0.4,0.6,'Min lattice constant = %1.5f $\AA$' % 
-        (BirchPars[3]**(1.0/3.0)),
-      #   transform = ax.transAxes)
-    #text(0.4,0.5,'Bulk modulus = %1.3f eV/$\AA^3$ = %1.3f GPa' 
-        % (BirchPars[1],
-        #                                          BirchPars[1]*160.21773)
-       #  , transform = ax.transAxes)
-
+    #ax = gca()
     savefig('%s_birch.png'%jobName,dpi=DPI)
-  
-    print 'initial guesses  : ',x0
-    print 'fitted parameters: ', BirchPars
     E0,B0,BP,V0 = BirchPars
-    print 'Bulk modulus:\t%f'%B0
-    print 'Volume:\t%f'%V0
-
+    a = V0**(1.0/3.0)
+    print 'Bulk modulus:\t%f'%(B0*160.2177)
+    print 'Minimum volume:\t%f'%V0
+    print 'Cube root:\t%f'%a
 
 #==============================================================================
 #  HCP Polynomial Fitting
@@ -302,12 +289,13 @@ def hexFit(EList,aList,cList,jobName):
     Y = np.linspace(cMin, cMax, NPOINTS)
     X, Y = np.meshgrid(X, Y)
     Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-    surf = ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',
-        alpha = 0.3, linewidth=0, antialiased=False)
-    points = ax.scatter(aList, cList, EList,marker='o',c='r')
-    ax.set_xlabel('a (/$\AA$)')
-    ax.set_ylabel('c (/$\AA$)')
+    ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',
+        alpha = 0.3, linewidth=0, antialiased=False) ###
+    ax.scatter(aList, cList, EList,marker='o',c='r')
+    ax.set_xlabel('a ($\AA$)')
+    ax.set_ylabel('c ($\AA$)')
     ax.set_zlabel('Energy (eV)')
+    ax.grid(False)
     savefig('%s_hex.png'%jobName,dpi=DPI)
     # find minimum of fit function
     guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
@@ -347,7 +335,6 @@ elif first == 'w' or first == 'W':
 else:
     PARENT = direct
 print PARENT+'\n'
-
 # find and list subdirectories
 children = findDirectories(PARENT)
 print 'Found these subdirectories:'
@@ -362,7 +349,6 @@ while not valid:
             jobName = dir
             print jobName+'\n'
             valid = True
-
 # parse the chosen results directory
 runList = parseResults(PARENT+jobName+'/')
 runList.sort(key=lambda x: x[0]) # sort job list by directory name
@@ -370,7 +356,6 @@ runList.sort(key=lambda x: x[0]) # sort job list by directory name
 jobName = jobName.replace('_results','') # remove '_results' from job name
 temp = sys.stdout # begin logging output
 sys.stdout = Logger(jobName)
-
 # check if runs are static and display data
 static = True
 for run in runList:
@@ -382,9 +367,7 @@ else:
     for run in runList:
         displayRun(run) 
 displayFinal(runList)
-
 sys.stdout = temp # stop logging output
-
 # run fitting on data
 fitting = raw_input('Fitting? (Birch or hexagonal): ')
 if fitting:
