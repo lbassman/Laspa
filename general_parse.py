@@ -3,7 +3,7 @@
 #==============================================================================
 #  Jonas Kaufman jlkaufman@hmc.edu
 #  June 29, 2015
-#  Script to parse VASP output directories located in a given results directory
+#  Script to parse VAP output directories located in a given results directory
 #  and summarize output, perform fitting
 #  Outputs data for each ionic step of each job and a summary of the final data
 #  for all jobs, writes data to a file jobName_data.log
@@ -21,7 +21,7 @@ WORK = '/work/03324/tg826232/'
 # image resolution for plots
 DPI = 300
 #==============================================================================
-#  Parsing Functions
+#  Parsing
 #==============================================================================
 def getTime(file):
     """ parses an OUTCAR file and pulls out the run time """
@@ -66,7 +66,7 @@ def getPressures(file):
             stresses += [float(pressureLine[8])]
     return (pressures,stresses)
 
-def getSizes(file):
+def getSizes(file): # change this to read in full lattice vectors
     """ parses an OUTCAR file and pulls out the volume and lattice
     parameters after each ionic step """
     f = open(file,'r')
@@ -136,7 +136,7 @@ def findDirectories(parent):
     return children
 
 #==============================================================================
-#  Display and Organization Functions
+#  Display and Organization
 #==============================================================================
 def displayRun(run):
     dirName = run[0]
@@ -175,7 +175,7 @@ def displayFinal(runList): # fix the column formatting
         E = fins[1][i]
         V = fins[2][i]
         lats = fins[3][i]
-        ax = lats[0]
+        ax = lats[0] 
         ay = lats[1]
         az = lats[2]
         P = fins[4][i]
@@ -249,9 +249,10 @@ def fitBirch(EList,VList,jobName):
     savefig('%s_birch.png'%jobName,dpi=DPI)
     E0,B0,BP,V0 = BirchPars
     a = V0**(1.0/3.0)
-    print 'Bulk modulus:\t%f'%(B0*160.2177)
+    print 'Minimum energy:\t%f'%E0
     print 'Minimum volume:\t%f'%V0
     print 'Cube root:\t%f'%a
+    print 'Bulk modulus:\t%f'%(B0*160.2177)
 
 #==============================================================================
 #  HCP Polynomial Fitting
@@ -306,10 +307,12 @@ def hexFit(EList,aList,cList,jobName):
         print 'Done\n'
     else:
         print opt.message
-    a,c = opt.x
-    print 'a:\t%f'%a
-    print 'c:\t%f'%c
-    print 'c/a:\t%f'%(c/a)
+    aMin,cMin = opt.x
+    E0 = quart([aMin,cMin],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+    print 'E0:\t%f'%E0
+    print 'a:\t%f'%aMin
+    print 'c:\t%f'%cMin
+    print 'c/a:\t%f'%(cMin/aMin)
 
 #==============================================================================
 #  Output Logging
@@ -337,6 +340,7 @@ else:
 print PARENT+'\n'
 # find and list subdirectories
 children = findDirectories(PARENT)
+children.sort()
 print 'Found these subdirectories:'
 print '\n'.join(children)+'\n'
 
@@ -371,12 +375,14 @@ sys.stdout = temp # stop logging output
 # run fitting on data
 fitting = raw_input('Fitting? (Birch or hexagonal): ')
 if fitting:
+    print 'Importing modules...'
     import matplotlib
     matplotlib.use('Agg') # Force matplotlib to not use any Xwindows backend.
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
     from pylab import * # this includes numpy as np
     import scipy.optimize as optimize
+    print 'Done\n'
 # add general minimization option (E vs ayz)
 if 'b' in fitting or 'B' in fitting:
     fins = finalValues(runList)

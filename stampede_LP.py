@@ -3,7 +3,7 @@
 #==============================================================================
 #  Jonas Kaufman jlkaufman@hmc.edu
 #  February 25, 2015
-#  Script to run VASP calculations necessary to find lattice parameters
+#  Script to run VASP calculations necessary to find the lattice parameters
 #  of a fcc, bcc or hcp crystal structure - on Stampede
 #==============================================================================
 # This script assumes these lattice vectors for hcp:
@@ -18,7 +18,7 @@ Make script executable using 'chmod +x _____.py' to call as bash script
 from Cell import *
 import subprocess as sp
 import numpy as np
-# home and work directories (SET THESE TO YOUR OWN)
+# home and work directories (SET THESE TO YOUR OWN, ending in /)
 HOME = '/home1/03324/tg826232/'
 WORK = '/work/03324/tg826232/'
 # email address for Slurm notifications (SET TO YOUR OWN)
