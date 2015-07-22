@@ -66,7 +66,7 @@ def getPressures(file):
             stresses += [float(pressureLine[8])]
     return (pressures,stresses)
 
-def getSizes(file): # change this to read in full lattice vectors
+def getSizes(file):
     """ parses an OUTCAR file and pulls out the volume and lattice
     parameters after each ionic step """
     f = open(file,'r')
@@ -138,7 +138,22 @@ def findDirectories(parent):
 #==============================================================================
 #  Display and Organization
 #==============================================================================
+def printTable(headings, data):
+    data.insert(0, headings)
+    nCol = len(headings)
+    colWidths = []
+    for i in range(nCol):
+        width = max(len(str(row[i])) for row in data)
+        colWidths += [width]
+    for row in data:
+        string = ''
+        for i in range(nCol):
+            string += str(row[i]).ljust(colWidths[i])
+            string += '\t'
+        print string
+
 def displayRun(run):
+    data = []
     dirName = run[0]
     EList = run[1]
     VList = run[2]
@@ -146,30 +161,26 @@ def displayRun(run):
     PList = run[4]
     sList = run[5]
     time = run[6]
-    lines = []
-    lines += [dirName]
-    headings = ('E0','Volume','ax','ay','az','Pressure','Pullay stress')
-    lines += [(('%-8s\t'*len(headings))%headings)] # need to fix columns
-    # come up with better formatting
+    print dirName
+    headings = ['E0','Volume','ax','ay','az','Pressure','Pullay stress']
     nSteps = len(EList)
     for i in range(nSteps):
         lats = aList[i]
         ax = lats[0]
         ay = lats[1]
         az = lats[2]
-        data = (EList[i],VList[i],ax,ay,az,PList[i],sList[i])
-        lines += [(('%.6f\t'*len(data))%data)]
-    lines += ['%d ionic steps'%nSteps]    # subtract 1?
-    lines += ['%d seconds'%time]
-    print '\n'.join(lines)+'\n'
+        data += [[EList[i],VList[i],ax,ay,az,PList[i],sList[i]]]
+    printTable()
+    print '%d ionic steps'%nSteps # subtract 1?
+    print '%d seconds'%time
+    print '\n'
 
 def displayFinal(runList): # fix the column formatting
     fins = finalValues(runList)
-    lines = []
-    lines += ['Final values']
-    headings = ('Name','E0','Volume','ax','ay','az',
-        'Pressure','Pullay stress','Time')
-    lines += [(('%-12s\t'*len(headings))%headings)]
+    data = []
+    print 'Final values'
+    headings = ['Name','E0','Volume','ax','ay','az',
+        'Pressure','Pullay stress','Time']
     for i in range(len(runList)):
         d = fins[0][i]
         E = fins[1][i]
@@ -181,9 +192,9 @@ def displayFinal(runList): # fix the column formatting
         P = fins[4][i]
         s = fins[5][i]
         t = fins[6][i]
-        data = (E,V,ax,ay,az,P,s)
-        lines += [('%-14s\t'%d)+(('%.6f\t'*len(data))%data)+('%d'%t)]
-    print '\n'.join(lines)+'\n'
+        data += [[d,E,V,ax,ay,az,P,s,t]]
+    printTable(headings,data)
+    print '\n'
 
 def finalValues(runList):
     dList = []
@@ -335,8 +346,9 @@ if first == 'h' or first == 'H':
     PARENT = HOME
 elif first == 'w' or first == 'W':
     PARENT = WORK
-else:
-    PARENT = direct
+else: 
+    if not direct[-1] == '/': direct += '/'
+    PARENT = direct 
 print PARENT+'\n'
 # find and list subdirectories
 children = findDirectories(PARENT)
