@@ -5,7 +5,7 @@
 #  June 12, 2015
 #  Classes and methods for manipulating POSCARs and the cells they describe
 #  This class has been modified for use only with VASP 5 style POSCARs
-#  (chemical symbols listed on the line after the lattice vectors
+#  with chemical symbols listed on the line after the lattice vectors
 #==============================================================================
 class Site:
     """ holds a single atomic site for the Cell class """
@@ -81,11 +81,11 @@ class Cell:
     contains the lattice vectors and atom sites of a VASP simulation cell
     """
     def __init__(self):
-        self.CorD = 'Cartesian' # cartesian coordinates by default
+        self.CorD = 'Direct' # direct coordinates by default
         self.latticeVectors = []
-        self.sites = [[Site()]]
+        self.sites = []
         self.elements = []
-        self.elementCounts = [1]
+        self.elementCounts = []
         self.a0 = 1.0
         self.header = ''
         self.SelectiveDynamics = False
@@ -233,6 +233,52 @@ class Cell:
             lines += [newline]
         return lines
 
+    def loadFromSQS(self,fileName='bestsqs.out'):
+        """
+        read in SQS, return lattice vectors and list with sites for each
+        species
+        """
+        import numpy as np # numpy is not required anywhere else
+        # get scaling vectors
+        lines = self.readPOSCAR(fileName)
+        scalings = (k.split()[0:3] for k in lines[0:3])
+        scalings = map(lambda x: map(float,x),scalings)
+        scaleMatrix = np.matrix(scalings)
+        # set a0, divide out of scaling
+        a0 = float(np.linalg.norm(scaleMatrix[0]))
+        scaleMatrix = scaleMatrix/a0
+        self.setA0(a0)
+        # get lattice vectors
+        lats = (k.split()[0:3] for k in lines[3:6])
+        lats = map(lambda x: map(float,x),lats)
+        latMatrix = np.matrix(lats)
+        latMatrixInv = latMatrix.transpose().getI() # transpose, invert
+        # scale lattice vectors
+        latMatrix = latMatrix*scaleMatrix
+        self.latticeVectors = latMatrix.tolist()
+        # add the sites
+        for line in lines[6:]:
+            xc,yc,zc,e = line.split()[0:4]
+            cartCoords = [xc,yc,zc]
+            cartCoords = map(float, cartCoords)
+            cartCoordsTrans = np.matrix(cartCoords).transpose()
+            directCoords = latMatrixInv*cartCoordsTrans
+            directCoords = directCoords.flatten().tolist()[0]
+            if e in self.elements:
+                i = self.elements.index(e)
+                self.elementCounts[i] += 1
+            else:
+                self.elements.append(e)
+                i = self.elements.index(e)
+                self.elementCounts.append(1)
+                self.sites.append([])
+            s = Site(directCoords,i)
+            self.sites[i].append(s)
+        self.header = ''.join(self.elements) + \
+                    ' %d atom'%(sum(self.elementCounts))
+        self.CorD = 'Direct'
+        return self
+
     def loadFromPOSCAR(self,fileName='POSCAR'):
         """
         read in POSCAR, return lattice vectors and list with sites for each
@@ -293,8 +339,8 @@ class Cell:
                     '%f %f %f\n'%(self.latticeVectors[2][0],
                                   self.latticeVectors[2][1],
                                     self.latticeVectors[2][2]))
-        string += (' %s'*len(self.elements))%tuple(self.elements) + '\n'
-        string += (' %d'*len(self.elementCounts))%tuple(self.elementCounts) + '\n'
+        string += (' %s'*len(self.elements))%tuple(self.elements)+'\n'
+        string += (' %d'*len(self.elementCounts))%tuple(self.elementCounts)+'\n'
         if self.SelectiveDynamics:
             string += 'Selective Dynamics\n'
         string += self.CorD+'\n'

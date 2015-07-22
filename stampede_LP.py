@@ -14,6 +14,7 @@
 """
 Add POSCAR, POTCAR, KPOINTS, and INCAR files to the working directory
 Make script executable using 'chmod +x _____.py' to call as bash script
+Requires Cell.py
 """
 from Cell import *
 import subprocess as sp
