@@ -6,7 +6,7 @@
 #  Script to run VASP calculations necessary to find the lattice parameters
 #  of a fcc, bcc or hcp crystal structure - on Stampede
 #==============================================================================
-# This script assumes these lattice vectors for hcp:
+# This script assumes these lattice vectors (or some multiples) for hcp:
 #  1.00000         0.00000000000000      0.00000
 # -0.50000         0.86602540378444      0.00000
 #  0.00000         0.00000000000000      c/a
@@ -26,7 +26,7 @@ EMAIL = 'jlkaufman@hmc.edu'
 # Stampede allocation number
 ALLOCATION = 'TG-DMR140093'
 
-def genSubScript(jName,dirList,runLength,nCores):
+def genSubScript(jName,dirList,runLength,nCores,nNodes):
     """ creates a submission script for Stampede's SLURM queueing system """
     # uses integer division
     hrs = runLength/60
@@ -35,6 +35,7 @@ def genSubScript(jName,dirList,runLength,nCores):
     '#SBATCH -J ' + jName +  '\n' +           # specify job name
     '#SBATCH -o ' + jName + '%j\n' +          # write output to this file
     '#SBATCH -n %d\n'%(nCores*len(dirList)) + # request cores
+    '#SBATCH -N %d\n'%(nNodes*len(dirList)) + # request nodes
     '#SBATCH -p normal\n' +                   # send to normal queue
     '#SBATCH -t %02d:%02d:00\n'%(hrs,mins) +  # set maximum wall time
     '#SBATCH --mail-user=' + EMAIL +'\n' +    # set email
@@ -56,7 +57,7 @@ def genSubScript(jName,dirList,runLength,nCores):
     f.write(string)
     f.close()
 
-def getLatCubic(jName, aList,runLength,nCores):
+def getLatCubic(jName, aList,runLength,nCores,nNodes):
     """
     creates the necessary POSCARs for a cubic structure
     generates a subdirectory for each vasp run, each with the necessary files,
@@ -75,11 +76,11 @@ def getLatCubic(jName, aList,runLength,nCores):
                 [dirName])
         sp.call(('cp -r %s '%dirName)+WORK,shell=True)
     # create submission script and run
-    genSubScript(jName,dirList,runLength,nCores)
+    genSubScript(jName,dirList,runLength,nCores,nNodes)
     sp.call('chmod u+x %s_submit'%jName,shell=True)
     sp.call(['sbatch','%s_submit'%jName]) 
 
-def getLatHex(jName, aList, caList, runLength,nCores):
+def getLatHex(jName, aList, caList, runLength, nCores, nNodes):
     """
     creates the necessary POSCARs for a hexagonal structure
     generates a subdirectory for each vasp run, each with the necessary files,
@@ -91,11 +92,6 @@ def getLatHex(jName, aList, caList, runLength,nCores):
             cell = Cell().loadFromPOSCAR()
             cell.setA0(float(a))
             (x,y,z) = cell.latticeVectors
-            # assumes these lattice vectors:
-            #  1.00000         0.00000000000000      0.00000
-            # -0.50000         0.86602540378444      0.00000
-            #  0.00000         0.00000000000000      c/a
-            # where a is the overall scaling factor
             cell.setLatticeVectors([x,y,[0,0,ca]])
             cell.sendToPOSCAR()    
             # copy files to subdirectory, move subdirectory to WORK
@@ -106,7 +102,7 @@ def getLatHex(jName, aList, caList, runLength,nCores):
                     [dirName])
             sp.call(('cp -r %s '%dirName)+WORK,shell=True)
     # create submission script and run
-    genSubScript(jName,dirList,runLength,nCores)  
+    genSubScript(jName,dirList,runLength,nCores,nNodes)  
     sp.call('chmod u+x %s_submit'%jName,shell=True)
     sp.call(['sbatch','%s_submit'%jName])   
 
@@ -124,19 +120,6 @@ elif 'b' in structure or 'B' in structure:
 else:
     structure = 'fcc'
 print structure,'\n'
-if hcp:
-    caMin = raw_input('Minimum c/a ratio: ')
-    if not caMin: caMin = 1.5
-    else: caMin = float(caMin)
-    print caMin,'\n'
-    caMax = raw_input('Maximum c/a ratio: ')
-    if not caMax: caMax = 2.0
-    else: caMax = float(caMax)
-    print caMax,'\n'
-    caPoints = raw_input('Number of c/a values: ')
-    if not caPoints: caPoints = 7
-    else: caPoints = int(caPoints)
-    print caPoints,'\n'  
 aMin = raw_input('Minimum lattice parameter a in angstroms: ')
 if not aMin: aMin = 2.0
 else: aMin = float(aMin)
@@ -149,6 +132,23 @@ aPoints = raw_input('Number of a values: ')
 if not aPoints: aPoints = 7
 else: aPoints = int(aPoints)
 print aPoints,'\n'
+if hcp:
+    nc = raw_input('Periodicity in c: ')
+    if not nc: nc = 1
+    else: nc = int(nc)
+    print nc,'\n'
+    caMin = raw_input('Minimum c/a ratio: ')
+    if not caMin: caMin = 1.5
+    else: caMin = float(caMin)
+    print caMin,'\n'
+    caMax = raw_input('Maximum c/a ratio: ')
+    if not caMax: caMax = 2.0
+    else: caMax = float(caMax)
+    print caMax,'\n'
+    caPoints = raw_input('Number of c/a values: ')
+    if not caPoints: caPoints = 7
+    else: caPoints = int(caPoints)
+    print caPoints,'\n'  
 runLength = raw_input('Maximum run time (minutes): ')
 if not runLength: runLength = 300
 else: runLength = int(runLength)
@@ -157,6 +157,10 @@ nCores = raw_input('Number of cores per simulation: ')
 if not nCores: nCores = 16
 else: nCores = int(nCores)
 print nCores,'\n'
+nNodes = raw_input('Number of nodes per simulation: ')
+if not nNodes: nNodes = 1
+else: nNodes = int(nNodes)
+print nNodes,'\n'
 jName = raw_input('Job name: ')
 if not jName: jName = 'LP'
 print jName,'\n'
@@ -169,9 +173,9 @@ aList = np.linspace(aMin, aMax, aPoints).tolist()
 print 'a values:'
 print aList,'\n'
 if hcp:
-    caList = np.linspace(caMin, caMax, caPoints).tolist()
+    caList = np.linspace(nc*caMin, nc*caMax, caPoints).tolist()
     print 'c/a values:'
     print caList,'\n'
-    getLatHex(jName,aList,caList,runLength,nCores)
+    getLatHex(jName,aList,caList,runLength,nCores,nNodes)
 else:
-    getLatCubic(jName,aList,runLength,nCores)
+    getLatCubic(jName,aList,runLength,nCores,nNodes)
