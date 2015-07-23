@@ -13,5 +13,20 @@ Requires Cell.py
 """
 from Cell import *
 
-cell = Cell().loadFromSQS('bestsqs.out')
-cell.sendToPOSCAR('POSCAR')
+# get filenames
+sqs = raw_input('SQS filename (input): ')
+if not sqs: sqs = 'bestsqs.out'
+print sqs,'\n'
+pos = raw_input('POSCAR filename (output):')
+if not pos: pos = 'POSCAR'
+print pos,'\n'
+
+# load SQS
+print 'Converting SQS...'
+cell = Cell().loadFromSQS(sqs)
+print 'Done\n'
+
+# send to POSCAR
+print 'Sending to POSCAR...'
+cell.sendToPOSCAR(pos)
+print 'Done\n'

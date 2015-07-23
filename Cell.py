@@ -2,7 +2,7 @@
 #  Josh Sanz jsanz@hmc.edu
 #  July 25, 2014
 #  edited by Jonas Kaufman jlkaufman@hmc.edu
-#  June 12, 2015
+#  July 23, 2015
 #  Classes and methods for manipulating POSCARs and the cells they describe
 #  This class has been modified for use only with VASP 5 style POSCARs
 #  with chemical symbols listed on the line after the lattice vectors
@@ -235,8 +235,7 @@ class Cell:
 
     def loadFromSQS(self,fileName='bestsqs.out'):
         """
-        read in SQS, return lattice vectors and list with sites for each
-        species
+        read in SQS, convert to direct, pull out scaling factor
         """
         import numpy as np # numpy is not required anywhere else
         # get scaling vectors

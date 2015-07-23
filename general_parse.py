@@ -170,7 +170,7 @@ def displayRun(run):
         ay = lats[1]
         az = lats[2]
         data += [[EList[i],VList[i],ax,ay,az,PList[i],sList[i]]]
-    printTable()
+    printTable(headings,data)
     print '%d ionic steps'%nSteps # subtract 1?
     print '%d seconds'%time
     print '\n'
@@ -384,6 +384,7 @@ else:
         displayRun(run) 
 displayFinal(runList)
 sys.stdout = temp # stop logging output
+
 # run fitting on data
 fitting = raw_input('Fitting? (Birch or hexagonal): ')
 if fitting:
@@ -395,6 +396,7 @@ if fitting:
     from pylab import * # this includes numpy as np
     import scipy.optimize as optimize
     print 'Done\n'
+
 # add general minimization option (E vs ayz)
 if 'b' in fitting or 'B' in fitting:
     fins = finalValues(runList)

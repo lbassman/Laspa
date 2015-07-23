@@ -2,13 +2,14 @@
 
 #==============================================================================
 #  Jonas Kaufman jlkaufman@hmc.edu
-#  June 22 2014
+#  June 22 2015
 #  Script to run VASP calculations necessary to calculate the generalized
 #  stacking fault energy curve for an fcc structure - on Stampede
 #==============================================================================
 """
 Add POTCAR, KPOINTS, and INCAR files to the working directory
 Make script executable using 'chmod +x _____.py' to call as bash script
+Requires Cell.py
 """
 import subprocess as sp
 from Cell import *
@@ -302,11 +303,16 @@ if fault:
     if 'w' in resultsDir or 'W' in resultsDir: HOME = WORK
     print HOME,'\n'
 """
+element = 'Cu'
+a = 3.63655
+nx = 5
+ny = 2
+nGap = 0
 jobName = 'test'
-sequence = 'ABCABCABCACBACBACBAC'
+sequence = 'ABCACBACBACABC'
 makePOSCAR(jobName,element,a,nx,ny,nGap,sequence)
-nShifts = 10
-makeISF(nShifts)
+#nShifts = 10
+#makeISF(nShifts)
 # make running jobs separate from creating fault
 # count the POSCARs
 """
