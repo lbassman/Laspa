@@ -10,6 +10,11 @@
 Add POSCAR, POTCAR, KPOINTS, INCAR_static, INCAR_relax, and INCAR_cont
 Make script executable using 'chmod +x _____.py' to call as bash script
 Requires Cell.py
+
+For the first relaxation, use ISTART = 0 & ICHARG = 2 to start fresh
+Use ISIF = 4 for hcp and ISIF = 2 for fcc and re-relax only for ISIF = 4
+For re-relaxation and static, use ISTART = 1 & ICHARG = 0 to continue
+Remember to use ISMEAR = -5 for static calculations
 """
 from Cell import *
 import subprocess as sp
@@ -129,7 +134,7 @@ if not nCores: nCores = 16
 else: nCores = int(nCores)
 print nCores,'\n'
 nNodes = raw_input('Number of nodes per simulation: ')
-if not nNodes: nNodes = 1
+if not nNodes: nNodes = nCores/16
 else: nNodes = int(nNodes)
 print nNodes,'\n'
 jName = raw_input('Job name: ')
