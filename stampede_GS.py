@@ -12,7 +12,7 @@ Make script executable using 'chmod +x _____.py' to call as bash script
 Requires Cell.py
 
 For the first relaxation, use ISTART = 0 & ICHARG = 2 to start fresh
-Use ISIF = 4 for hcp and ISIF = 2 for fcc and re-relax only for ISIF = 4
+Use ISIF = 4 with re-relaxation to relax shape (for hcp), otherwise ISIF = 2
 For re-relaxation and static, use ISTART = 1 & ICHARG = 0 to continue
 Remember to use ISMEAR = -5 for static calculations
 """
