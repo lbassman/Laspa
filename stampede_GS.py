@@ -50,6 +50,11 @@ def genSubScript(reRelax,jName,dirList,runLength,nCores,nNodes):
         string += 'ibrun -o %d '%(nCores*i)
         string += '-n %d vasp_std > vasp_output.out &\n'%nCores
     string += 'wait\n'
+    # copy relaxation results to another directory
+    string += 'cd '+HOME+'\nmkdir %s_relax_results\n'%(jName)
+    for i in range(nDirs):
+        string += 'cd %s\n'%WORK
+        string += 'cp -r %s %s%s_relax_results\n'%(dirList[i],HOME,jName)
     # re-relaxation, if requested
     if reRelax:
         for i in range(nDirs):
@@ -58,12 +63,12 @@ def genSubScript(reRelax,jName,dirList,runLength,nCores,nNodes):
             string += 'cp CONTCAR POSCAR\n'
             string += 'ibrun -o %d '%(nCores*i)
             string += '-n %d vasp_std > vasp_output.out &\n'%nCores
-        string += 'wait\n'
-    # copy relaxation results to another directory
-    string += 'cd '+HOME+'\nmkdir %s_relax_results\n'%(jName)
-    for i in range(nDirs):
-        string += 'cd %s\n'%WORK
-        string += 'cp -r %s %s%s_relax_results\n'%(dirList[i],HOME,jName)
+        string += 'wait\n'   
+        # copy re-relaxation results to another directory
+        string += 'cd '+HOME+'\nmkdir %s_re-relax_results\n'%(jName)
+        for i in range(nDirs):
+            string += 'cd %s\n'%WORK
+            string += 'cp -r %s %s%s_re-relax_results\n'%(dirList[i],HOME,jName)
     # final static calculation
     for i in range(nDirs):
         string += 'cd %s%s\n'%(WORK,dirList[i])
@@ -76,15 +81,14 @@ def genSubScript(reRelax,jName,dirList,runLength,nCores,nNodes):
     string += 'cd '+HOME+'\nmkdir %s_static_results\n'%(jName)
     for i in range(nDirs):
         string += 'cd %s\n'%WORK
-        string += 'mv -r %s %s%s_static_results\n'%(dirList[i],HOME,jName)
+        string += 'mv %s %s%s_static_results\n'%(dirList[i],HOME,jName)
     f = open(jName + '_submit','w')
     f.write(string)
     f.close()
 
 def getLat(jName, aList, reRelax, runLength,nCores,nNodes):
     """
-    creates the necessary POSCARs for a cubic structure
-    generates a subdirectory for each vasp run, each with the necessary files,
+    creates the necessary POSCARs, generates a subdirectory for each run,
     moves subdirectories to work directory and runs submission script
     """
     dirList = []
@@ -122,8 +126,11 @@ aPoints = raw_input('Number of values: ')
 if not aPoints: aPoints = 7
 else: aPoints = int(aPoints)
 print aPoints,'\n'
-reRelax = raw_input('Re-relaxation? (y/n):')
-if 'y' in reRelax or 'Y' in reRelax: reRelax = True
+reRelax = raw_input('Re-relaxation? (y/n): ')
+if 'y' in reRelax or 'Y' in reRelax:
+    reRelax = True
+else:
+    reRelax = False
 print reRelax,'\n'
 runLength = raw_input('Maximum run time (minutes): ')
 if not runLength: runLength = 300
