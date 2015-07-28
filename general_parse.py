@@ -267,63 +267,63 @@ def fitBirch(EList,VList,jobName):
 
 #==============================================================================
 #  HCP Polynomial Fitting
-#==============================================================================`
-def quart(data,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o):
-    """ general bivariate quartic polynomial """
-    x = data[0] 
-    y = data[1]
-    poly = a + b*x + c*y + d*x**2 + e*x*y + f*y**2
-    poly += (g*x**3 + h*x**2*y + i*x*y**2 + j*y**3)
-    poly += (k*x**4 + l*x**3*y + m*x**2*y**2 + n*x*y**3 + o*y**4)
-    return poly
+# #==============================================================================`
+# def quart(data,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o):
+#     """ general bivariate quartic polynomial """
+#     x = data[0] 
+#     y = data[1]
+#     poly = a + b*x + c*y + d*x**2 + e*x*y + f*y**2
+#     poly += (g*x**3 + h*x**2*y + i*x*y**2 + j*y**3)
+#     poly += (k*x**4 + l*x**3*y + m*x**2*y**2 + n*x*y**3 + o*y**4)
+#     return poly
 
-def hexFit(EList,aList,cList,jobName):
-    """
-    fits energy/lattice parameter data to quart, plots results
-    and finds the minimum of the fit function
-    """
-    # perform fitting
-    aMin = min(aList)
-    aMax = max(aList)
-    cMin = min(cList)
-    cMax = max(cList)
-    data = []
-    guess = [1] * 15 # initial guesses for quart parameters
-    print 'Fitting data...'
-    params, pcov = optimize.curve_fit(quart,[aList,cList],EList,guess)
-    print 'Done\n'
-    a,b,c,d,e,f,g,h,i,j,k,l,m,n,o = params
-    # generate graph
-    NPOINTS = 50
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    X = np.linspace(aMin, aMax, NPOINTS)
-    Y = np.linspace(cMin, cMax, NPOINTS)
-    X, Y = np.meshgrid(X, Y)
-    Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-    ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',
-        alpha = 0.3, linewidth=0, antialiased=False) ###
-    ax.scatter(aList, cList, EList,marker='o',c='r')
-    ax.set_xlabel('a ($\AA$)')
-    ax.set_ylabel('c ($\AA$)')
-    ax.set_zlabel('Energy (eV)')
-    ax.grid(False)
-    savefig('%s_hex.png'%jobName,dpi=DPI)
-    # find minimum of fit function
-    guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
-    print 'Finding minimum...'
-    opt = optimize.minimize(quart,guesses,args=tuple(params),
-        method='Nelder-Mead')
-    if opt.success:
-        print 'Done\n'
-    else:
-        print opt.message
-    aMin,cMin = opt.x
-    E0 = quart([aMin,cMin],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-    print 'E0:\t%f'%E0
-    print 'a:\t%f'%aMin
-    print 'c:\t%f'%cMin
-    print 'c/a:\t%f'%(cMin/aMin)
+# def hexFit(EList,aList,cList,jobName):
+#     """
+#     fits energy/lattice parameter data to quart, plots results
+#     and finds the minimum of the fit function
+#     """
+#     # perform fitting
+#     aMin = min(aList)
+#     aMax = max(aList)
+#     cMin = min(cList)
+#     cMax = max(cList)
+#     data = []
+#     guess = [1] * 15 # initial guesses for quart parameters
+#     print 'Fitting data...'
+#     params, pcov = optimize.curve_fit(quart,[aList,cList],EList,guess)
+#     print 'Done\n'
+#     a,b,c,d,e,f,g,h,i,j,k,l,m,n,o = params
+#     # generate graph
+#     NPOINTS = 50
+#     fig = plt.figure()
+#     ax = fig.gca(projection='3d')
+#     X = np.linspace(aMin, aMax, NPOINTS)
+#     Y = np.linspace(cMin, cMax, NPOINTS)
+#     X, Y = np.meshgrid(X, Y)
+#     Z = quart([X,Y],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+#     ax.plot_surface(X, Y, Z, rstride=4, cstride=4, color = 'b',
+#         alpha = 0.3, linewidth=0, antialiased=False) ###
+#     ax.scatter(aList, cList, EList,marker='o',c='r')
+#     ax.set_xlabel('a ($\AA$)')
+#     ax.set_ylabel('c ($\AA$)')
+#     ax.set_zlabel('Energy (eV)')
+#     ax.grid(False)
+#     savefig('%s_hex.png'%jobName,dpi=DPI)
+#     # find minimum of fit function
+#     guesses = ((aMin+aMax)/2,(cMin+cMax)/2)
+#     print 'Finding minimum...'
+#     opt = optimize.minimize(quart,guesses,args=tuple(params),
+#         method='Nelder-Mead')
+#     if opt.success:
+#         print 'Done\n'
+#     else:
+#         print opt.message
+#     aMin,cMin = opt.x
+#     E0 = quart([aMin,cMin],a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+#     print 'E0:\t%f'%E0
+#     print 'a:\t%f'%aMin
+#     print 'c:\t%f'%cMin
+#     print 'c/a:\t%f'%(cMin/aMin)
 
 #==============================================================================
 #  Output Logging
@@ -383,10 +383,9 @@ else:
     for run in runList:
         displayRun(run) 
 displayFinal(runList)
-sys.stdout = temp # stop logging output
 
 # run fitting on data
-fitting = raw_input('Fitting? (Birch or hexagonal): ')
+fitting = raw_input('Birch fitting? (y/n): ')
 if fitting:
     print 'Importing modules...'
     import matplotlib
@@ -397,19 +396,21 @@ if fitting:
     import scipy.optimize as optimize
     print 'Done\n'
 
-# add general minimization option (E vs ayz)
-if 'b' in fitting or 'B' in fitting:
+if 'y' in fitting or 'Y' in fitting:
     fins = finalValues(runList)
     energies = fins[1]
     volumes = fins[2]
     fitBirch(energies,volumes,jobName)
-elif 'x' in fitting:
-    fins = finalValues(runList)
-    energies = fins[1]
-    lats = fins[3]
-    aList = []
-    cList = []
-    for i in range(len(lats)):
-        aList += [lats[i][1]]
-        cList += [lats[i][2]]
-    hexFit(energies,aList,cList,jobName)
+
+sys.stdout = temp # stop logging output
+
+# elif 'x' in fitting:
+#     fins = finalValues(runList)
+#     energies = fins[1]
+#     lats = fins[3]
+#     aList = []
+#     cList = []
+#     for i in range(len(lats)):
+#         aList += [lats[i][1]]
+#         cList += [lats[i][2]]
+#     hexFit(energies,aList,cList,jobName)

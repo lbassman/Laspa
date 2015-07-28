@@ -244,9 +244,10 @@ class Cell:
         scalings = map(lambda x: map(float,x),scalings)
         scaleMatrix = np.matrix(scalings)
         # set a0, divide out of scaling
-        a0 = float(np.linalg.norm(scaleMatrix[0]))
-        scaleMatrix = scaleMatrix/a0
-        self.setA0(a0)
+        #a0 = float(np.linalg.norm(scaleMatrix[0]))
+        #scaleMatrix = scaleMatrix/a0
+        #self.setA0(a0)
+        self.setA0(1.0) # set a0 to 1.0 automatically, user can divide out later
         # get lattice vectors
         lats = (k.split()[0:3] for k in lines[3:6])
         lats = map(lambda x: map(float,x),lats)
@@ -347,9 +348,11 @@ class Cell:
         for element in self.sites:
             for k in element:
                 if self.SelectiveDynamics:
-                    string += k.toStringSelectiveDynamics()[3:] + '\n'
+                    pos = ' '.join(k.toStringSelectiveDynamics().split()[1:]) 
+                    string += pos + '\n'
                 else:
-                    string += k.toString()[3:] + '\n'
+                    pos = ' '.join(k.toString().split()[1:])
+                    string += pos + '\n'
         f = open(fileName,'w')
         f.write(string)
         f.close()
