@@ -66,6 +66,19 @@ def getPressures(file):
             stresses += [float(pressureLine[8])]
     return (pressures,stresses)
 
+def getKpoints(file):
+    """ parses an OUTCAR file and pulls out number of irreducible k-points """
+    f = open(file,'r')
+    kPoints = 0
+    while True:
+        nextLine = f.readline()
+        if not nextLine:
+            break
+        if 'irreducible' in nextLine:
+            kPointsLine = nextLine.split()
+            kPoints = int(kPointsLine[1])
+    return kPoints
+
 def getSizes(file):
     """ parses an OUTCAR file and pulls out the volume and lattice
     parameters after each ionic step """
@@ -99,6 +112,7 @@ def parseResults(directory):
     aLists = [] # list of lattice parameters lists
     PLists = [] # list of pressure lists
     sLists = [] # list of Pullay stress lists
+    kList = []  # list of k-points
     tList = []  # list of runtimes
     subdirs = findDirectories(directory)
     for dir in subdirs:
@@ -115,6 +129,7 @@ def parseResults(directory):
                 pressureData = getPressures(pathToFile)
                 PLists += [pressureData[0]] # add pressure lists
                 sLists += [pressureData[1]] # add Pullay stress lists
+                kList += [getKpoints(pathToFile)] # add k-points
                 tList += [getTime(pathToFile)] # add time
                 print 'OUTCAR read\n'
                 OUTCAR = True
@@ -122,7 +137,7 @@ def parseResults(directory):
             print 'WARNING: no OUTCAR read\n'
     for i in range(len(dList)):
         runs.append([dList[i],ELists[i],VLists[i],aLists[i],PLists[i],
-            sLists[i],tList[i]])
+            sLists[i],kList[i],tList[i]])
     return runs
 
 def findDirectories(parent):
@@ -160,7 +175,8 @@ def displayRun(run):
     aList = run[3]
     PList = run[4]
     sList = run[5]
-    time = run[6]
+    kPoints = run[6]
+    time = run[7]
     print dirName
     headings = ['E0','Volume','ax','ay','az','Pressure','Pullay stress']
     nSteps = len(EList)
@@ -171,6 +187,7 @@ def displayRun(run):
         az = lats[2]
         data += [[EList[i],VList[i],ax,ay,az,PList[i],sList[i]]]
     printTable(headings,data)
+    print '%d irr k-points'%kPoints
     print '%d ionic steps'%nSteps # subtract 1?
     print '%d seconds'%time
     print '\n'
@@ -180,7 +197,7 @@ def displayFinal(runList): # fix the column formatting
     data = []
     print 'Final values'
     headings = ['Name','E0','Volume','ax','ay','az',
-        'Pressure','Pullay stress','Time']
+        'Pressure','Pullay stress','Irr k-points','Time']
     for i in range(len(runList)):
         d = fins[0][i]
         E = fins[1][i]
@@ -191,8 +208,9 @@ def displayFinal(runList): # fix the column formatting
         az = lats[2]
         P = fins[4][i]
         s = fins[5][i]
-        t = fins[6][i]
-        data += [[d,E,V,ax,ay,az,P,s,t]]
+        k = fins[6][i]
+        t = fins[7][i]
+        data += [[d,E,V,ax,ay,az,P,s,k,t]]
     printTable(headings,data)
     print '\n'
 
@@ -203,6 +221,7 @@ def finalValues(runList):
     aFins = []
     PFins = []
     sFins = []
+    kList = []
     tList = []
     for run in runList:
         dList += [run[0]]
@@ -211,8 +230,9 @@ def finalValues(runList):
         aFins += [run[3][-1]]
         PFins += [run[4][-1]]
         sFins += [run[5][-1]]
-        tList += [run[6]]
-    return (dList,EFins,VFins,aFins,PFins,sFins,tList)
+        kList += [run[6]]
+        tList += [run[7]]
+    return (dList,EFins,VFins,aFins,PFins,sFins,kList,tList)
 
 #==============================================================================
 #  Birch Murnaghan Fitting
